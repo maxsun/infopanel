@@ -1,0 +1,47 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+
+  --green: #1A936F;
+  --pink: #e56c90;
+  --blue: #2C6A97;
+  --yellow: #DFB954;
+  --darkgrey: #73767E;
+  --lightgrey: #EAEBEF;
+  --white: #FCFCFC;
+  --black: #202423;
+  --font-size: 16px;
+
+  --bg-color1: white;
+  --bg-color2: var(--white);
+  --font-size: 16px;
+  --font-sans: "Segoe UI", sans-serif !important;
+  --font-mono: Menlo, Monaco, 'Courier New', monospace;
+  --font-color1: var(--black);
+  --font-color2: var(--green);
+  --font-color3: var(--blue);
+  --highlight: #FCF6BD;
+  --line-color: #DCDEE4;
+
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-style: italic;
+  font-size: 24px;
+  padding: 0;
+  margin: 0;
+}
+
+h2 {
+  text-decoration: underline;
+  font-size: 20px;
+  padding: 0;
+  margin: 0;
+}
+
+.inverted {
+  filter: invert(100%);
+}
