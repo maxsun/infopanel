@@ -7,7 +7,7 @@ interface Split {
   direction: "vertical" | "horizontal";
 }
 
-const BORDER_WIDTH = 5;
+const PADDING_SIZE = 0;
 
 const isSplit = (n: any): n is Split => {
   return (
@@ -45,9 +45,12 @@ const splitToHTML = (
   const fstChild = bNodeToHTML(split.fst, id + "0", focusedIds);
   fstChild.classList.add("fst");
 
+  // fstChild.style[
+  //   split.direction === "horizontal" ? "width" : "height"
+  // ] = `calc(${split.pos}%`;
   fstChild.style[
     split.direction === "horizontal" ? "width" : "height"
-  ] = `calc(${split.pos}% - ${2 * BORDER_WIDTH}px)`;
+  ] = `calc(${split.pos}% - ${2 * PADDING_SIZE}px)`;
 
   const sndChild = bNodeToHTML(split.snd, id + "1", focusedIds);
   sndChild.classList.add("snd");
@@ -72,18 +75,16 @@ const splitToHTML = (
     console.log(evt);
     if (evt.shiftKey) {
       if (evt.key === "ArrowUp") {
-        STATE = nudge(STATE, focusedIds[0], "vertical", -1);
+        STATE = nudge(STATE, focusedIds[0], "vertical", -5, true);
       }
       if (evt.key === "ArrowDown") {
-        STATE = nudge(STATE, focusedIds[0], "vertical", 1);
-        // n = getFocusDown(STATE, focusedIds[0]);
+        STATE = nudge(STATE, focusedIds[0], "vertical", 5, true);
       }
       if (evt.key === "ArrowRight") {
-        // STATE = nudgeHorizontal(STATE, focusedIds[0], -1);
-        STATE = nudge(STATE, focusedIds[0], "horizontal", 1);
+        STATE = nudge(STATE, focusedIds[0], "horizontal", 5, true);
       }
       if (evt.key === "ArrowLeft") {
-        STATE = nudge(STATE, focusedIds[0], "horizontal", -1);
+        STATE = nudge(STATE, focusedIds[0], "horizontal", -5, true);
       }
     } else {
       if (evt.key === "ArrowUp") {
@@ -101,6 +102,7 @@ const splitToHTML = (
     }
     if (evt.key === "Enter") {
       STATE = insertSplit(STATE, focusedIds[0]);
+      n = focusedIds + "0";
     }
     if (evt.key === "Backspace") {
       STATE = deleteNode(STATE, focusedIds[0]);
@@ -235,8 +237,16 @@ const deleteNode = (root: BNode, id: string): BNode => {
   return replaceNode(root, parentId.replace("root", ""), r);
 };
 
-const nudge = (root: BNode, id: string, direction: string, bias: number) => {
+const nudge = (
+  root: BNode,
+  id: string,
+  direction: string,
+  bias: number,
+  absolute?: boolean
+) => {
   console.log(`Nudging ${id} ${direction} ${bias}`);
+
+  absolute = absolute ? absolute : false;
 
   if (id.replace("root", "") === "") {
     console.log("Tried to nudge, but nowhere to go");
@@ -256,73 +266,108 @@ const nudge = (root: BNode, id: string, direction: string, bias: number) => {
     // check if moving against edge of parent split. if so, nudge parent
     if ((bias > 0 && lastchr === "1") || (bias < 0 && lastchr == "0")) {
       console.log(`Trying to move ${direction}, but cant. Will nudge parent.`);
-      let nudgedParent = nudge(root, parentId, direction, bias);
+      let nudgedParent = nudge(root, parentId, direction, bias, absolute);
       console.log(
         "Nudged parent:",
         nudgedParent,
         "now have to normalize children"
       );
 
-      const getIdOfHighestChange = (
+      const getChangedIds = (
         node1: BNode,
         node2: BNode,
         id: string
-      ): string => {
-        console.log("Comparing", node1, node2);
-        if (isContent(node1) && isContent(node2) && node1 !== node2) {
-          return id;
+      ): string[] => {
+        if (
+          (isContent(node1) && isSplit(node2)) ||
+          (isSplit(node1) && isContent(node2))
+        ) {
+          throw Error("comparison is off somehoow");
         }
         if (isSplit(node1) && isSplit(node2)) {
-          if (node1.pos !== node2.pos) {
-            console.log("found it!");
-            return id;
-          } else {
-            return [
-              getIdOfHighestChange(node1.fst, node2.fst, id + "0"),
-              getIdOfHighestChange(node1.snd, node2.snd, id + "1"),
-            ].sort((a: string, b: string) => (a.length < b.length ? 1 : -1))[0];
+          const changedFst = getChangedIds(node1.fst, node2.fst, id + "0");
+          const changedSnd = getChangedIds(node1.snd, node2.snd, id + "1");
+          if (node1.pos != node2.pos) {
+            return changedFst.concat(changedSnd).concat([id]);
           }
+          return changedFst.concat(changedSnd);
         }
+        if (isContent(node1) && isContent(node2)) {
+          return node1 !== node2 ? [id] : [];
+        }
+        console.log("UNEXPECTED:", node1, node2);
       };
 
-      let z = getIdOfHighestChange(root, nudgedParent, "");
-      let gp = getBNodeByKey(root, z);
+      let changes = {};
+      let changedIds = getChangedIds(root, nudgedParent, "");
+      changedIds.forEach((changeId) => {
+        let original = getBNodeByKey(root, changeId) as Split;
+        let nudged = getBNodeByKey(nudgedParent, changeId) as Split;
+        let opos = (original as Split).pos;
+        let npos = (nudged as Split).pos;
+        let delta = npos - opos;
+        changes[changeId] = delta;
+      });
 
-      let nudgedGp = getBNodeByKey(nudgedParent, z);
-      console.log(">>", gp);
-      console.log(">?>", nudgedGp);
+      console.log(`up-tree changes (while nudging ${id}):`, changes);
+      changedIds = Object.keys(changes).sort((a: string, b: string) =>
+        a.length < b.length ? -1 : 1
+      );
 
-      let opos = (gp as Split).pos;
-      if (id.charAt(id.length - 1) === "0") opos = 100 - opos;
-      let npos = (nudgedGp as Split).pos;
-      if (id.charAt(id.length - 1) === "0") npos = 100 - npos;
-      let q = (npos - opos) / opos;
-      // q = q * 1.05;
-      // q = -q * 0.95;
-      console.log(">", opos, npos, q);
-      if (opos === undefined) {
-        return nudgedParent;
-      }
-      // after nudging, the parent's width will have increased by:
-      // 5%
+      let oldSize = getAbsoluteSizeOfNode(root, parentId, direction);
+      let newSize = getAbsoluteSizeOfNode(nudgedParent, parentId, direction);
+
+      let oldOffset = getAbsoluteOffsetOfNode(root, parentId, direction);
+      let newOffset = getAbsoluteOffsetOfNode(
+        nudgedParent,
+        parentId,
+        direction
+      );
+
+      let parentOffset = getAbsoluteOffsetOfNode(
+        nudgedParent,
+        parentId,
+        direction
+      );
+
+      console.log(`Parent (${parentId}) offset: ${oldOffset} => ${newOffset}`);
+
+      let o = oldOffset + oldSize * (parentNode.pos / 100);
+
+      console.log(`We want to keep the split pos at ${o}`);
+      console.log(`If we set the pos to 0, it would be at ${parentOffset}`);
+      console.log(
+        `If we set the pos to 100, it would be at ${parentOffset + newSize}`
+      );
+
+      // If we set the pos to x, its abs position is: parentOffset + (x / 100) * newSize
+      let newPos = ((o - parentOffset) / newSize) * 100;
+      console.log("New pos is:", newPos);
 
       let newParent = {
         fst: parentNode.fst,
         snd: parentNode.snd,
-        pos:
-          id.charAt(id.length - 1) === "0"
-            ? 100 - (100 - parentNode.pos) / (1 + q)
-            : parentNode.pos / (1 + q), // todo this has to be handles differntly if fst child
-        // pos: parentNode.pos,
+        pos: newPos,
         direction: parentNode.direction,
       };
       return replaceNode(nudgedParent, parentId.replace("root", ""), newParent);
     }
 
+    let x = 1;
+    if (absolute) {
+      console.log("Performing pos move for nudge on:", parentId);
+      console.log(`Trying to move the line ${bias}% of root.`);
+      const parentSize = getAbsoluteSizeOfNode(root, parentId, direction);
+      console.log("Parent size is:", parentSize);
+      const rootSize = 100;
+      console.log("Root size is:", rootSize);
+      x = rootSize / parentSize;
+    }
+
     let newSplitParent: BNode = {
       fst: parentNode.fst,
       snd: parentNode.snd,
-      pos: parentNode.pos + bias * 5,
+      pos: parentNode.pos + bias * x,
       direction: parentNode.direction,
     };
     return replaceNode(root, parentId.replace("root", ""), newSplitParent);
@@ -330,7 +375,77 @@ const nudge = (root: BNode, id: string, direction: string, bias: number) => {
   console.log(
     "nudging cell in wrong direction -- nudging first available parent"
   );
-  return nudge(root, parentId, direction, bias);
+  return nudge(root, parentId, direction, bias, absolute);
+};
+
+const getAbsoluteSizeOfNode = (
+  rootNode: BNode,
+  id: string,
+  direction: string
+): number => {
+  // the output is 0-100 representing percent size of root, who's size never changes
+
+  if (id.replace("root", "") === "") {
+    return 100;
+  }
+  const ancestorId = id.slice(0, id.length - 1);
+  const ancestorNode = getBNodeByKey(
+    rootNode,
+    ancestorId.replace("root", "")
+  ) as Split;
+  if (ancestorNode.direction !== direction) {
+    return getAbsoluteSizeOfNode(rootNode, ancestorId, direction);
+  }
+  if (
+    id
+      .replace("root", "")
+      .replace(ancestorId.replace("root", ""), "")
+      .charAt(0) === "0"
+  ) {
+    return (
+      (ancestorNode.pos / 100) *
+      getAbsoluteSizeOfNode(rootNode, ancestorId, direction)
+    );
+  } else {
+    return (
+      ((100 - ancestorNode.pos) / 100) *
+      getAbsoluteSizeOfNode(rootNode, ancestorId, direction)
+    );
+  }
+};
+
+const getAbsoluteOffsetOfNode = (
+  rootNode: BNode,
+  id: string,
+  direction: string
+): number => {
+  // the output is 0-100 representing percent size of root, who's size never changes
+
+  if (id.replace("root", "") === "") {
+    return 0;
+  }
+  const ancestorId = id.slice(0, id.length - 1);
+  const ancestorNode = getBNodeByKey(
+    rootNode,
+    ancestorId.replace("root", "")
+  ) as Split;
+  if (ancestorNode.direction !== direction) {
+    return 0 + getAbsoluteOffsetOfNode(rootNode, ancestorId, direction);
+  }
+  if (
+    id
+      .replace("root", "")
+      .replace(ancestorId.replace("root", ""), "")
+      .charAt(0) === "0"
+  ) {
+    return 0 + getAbsoluteOffsetOfNode(rootNode, ancestorId, direction);
+  } else {
+    return (
+      (ancestorNode.pos / 100) *
+        getAbsoluteSizeOfNode(rootNode, ancestorId, direction) +
+      getAbsoluteOffsetOfNode(rootNode, ancestorId, direction)
+    );
+  }
 };
 
 const rotateSplit = (rootNode: BNode, id: string): BNode => {
@@ -597,30 +712,44 @@ img.src =
 // };
 
 let STATE: BNode = {
+  fst: document.createTextNode("2"),
   snd: {
-    fst: document.createTextNode("l"),
-    snd: {
-      fst: {
-        fst: document.createTextNode("1"),
-        snd: {
-          fst: document.createTextNode("2"),
-          snd: document.createTextNode("3"),
-          pos: 25,
-          direction: "vertical",
-        },
+    fst: {
+      snd: {
+        fst: document.createTextNode("2"),
+        snd: document.createTextNode("2"),
         pos: 50,
-        direction: "vertical",
+        direction: "horizontal",
       },
-      snd: document.createTextNode("2"),
+      fst: document.createTextNode("2"),
       pos: 50,
-      direction: "vertical",
+      direction: "horizontal",
     },
+    // fst: document.createTextNode("2"),
+    snd: document.createTextNode("2"),
     pos: 50,
     direction: "horizontal",
   },
-  fst: document.createTextNode("d"),
   pos: 50,
   direction: "horizontal",
 };
+
+// let STATE: BNode = {
+//   snd: document.createTextNode("2"),
+//   fst: {
+//     fst: {
+//       fst: document.createTextNode("2"),
+//       snd: document.createTextNode("2"),
+//       pos: 50,
+//       direction: "horizontal",
+//     },
+//     // fst: document.createTextNode("2"),
+//     snd: document.createTextNode("2"),
+//     pos: 50,
+//     direction: "horizontal",
+//   },
+//   pos: 50,
+//   direction: "horizontal",
+// };
 
 render(document.body, STATE, []);
