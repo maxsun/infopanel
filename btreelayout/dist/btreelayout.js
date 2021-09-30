@@ -129,31 +129,83 @@ var bNodeToHTML = function (node, id, focusedIds) {
                 });
                 e.stopPropagation();
             };
-            handle.ontouchstart = function (e) {
-                onHandleSelect({
-                    nodeId: id,
-                    handle: classname,
-                    initX: (e.touches[0].screenX / window.innerWidth) * 100,
-                    initY: (e.touches[0].screenY / window.innerHeight) * 100,
-                });
-            };
-            handle.ontouchmove = function (e) {
-                if (selectedHandle) {
-                    var x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-                    var y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-                    if (Math.abs(x - selectedHandle.initX) > 0.5 &&
-                        Math.abs(y - selectedHandle.initY) > 0.5) {
-                        onHandleDrag(x, y);
-                        selectedHandle = {
-                            nodeId: selectedHandle.nodeId,
-                            handle: selectedHandle.handle,
-                            initX: x,
-                            initY: y,
-                        };
-                    }
-                }
-            };
+            // handle.ontouchstart = (e) => {
+            //   onHandleSelect({
+            //     nodeId: id,
+            //     handle: classname,
+            //     initX: (e.touches[0].screenX / window.innerWidth) * 100,
+            //     initY: (e.touches[0].screenY / window.innerHeight) * 100,
+            //   });
+            // };
+            // handle.ontouchmove = (e) => {
+            //   if (selectedHandle) {
+            //     let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+            //     let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+            //     if (
+            //       Math.abs(x - selectedHandle.initX) > 0.5 &&
+            //       Math.abs(y - selectedHandle.initY) > 0.5
+            //     ) {
+            //       onHandleDrag(x, y);
+            //       selectedHandle = {
+            //         nodeId: selectedHandle.nodeId,
+            //         handle: selectedHandle.handle,
+            //         initX: x,
+            //         initY: y,
+            //       };
+            //     }
+            //   }
+            // };
             return handle;
+        };
+        contentWrapper.ontouchstart = function (e) {
+            console.log("!!!!!!");
+            selectedHandle = {
+                nodeId: id,
+                handle: "",
+                initX: (e.touches[0].screenX / window.innerWidth) * 100,
+                initY: (e.touches[0].screenY / window.innerHeight) * 100,
+            };
+        };
+        contentWrapper.ontouchmove = function (e) {
+            if (selectedHandle) {
+                var x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+                var y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+                if (Math.abs(x - selectedHandle.initX) > 0.5 &&
+                    Math.abs(y - selectedHandle.initY) > 0.5) {
+                    var xdiff = x - selectedHandle.initX;
+                    var ydiff = y - selectedHandle.initY;
+                    var type = null;
+                    if (xdiff >= 0) {
+                        if (ydiff >= 0) {
+                            type = "bottomright";
+                        }
+                        else {
+                            type = "topright";
+                        }
+                    }
+                    else {
+                        if (ydiff <= 0) {
+                            type = "bottomleft";
+                        }
+                        else {
+                            type = "topleft";
+                        }
+                    }
+                    selectedHandle = {
+                        nodeId: selectedHandle.nodeId,
+                        handle: type,
+                        initX: selectedHandle.initX,
+                        initY: selectedHandle.initY,
+                    };
+                    onHandleDrag(x, y);
+                    selectedHandle = {
+                        nodeId: selectedHandle.nodeId,
+                        handle: type,
+                        initX: x,
+                        initY: y,
+                    };
+                }
+            }
         };
         contentWrapper.appendChild(makeHandle("topleft"));
         contentWrapper.appendChild(makeHandle("topright"));
@@ -575,6 +627,9 @@ var getFocusDown = function (nodeState, currFocus) {
         var _a, _b;
         var parentId = currFocus.substring(0, currFocus.length - 1);
         var parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+        if (parentId === "") {
+            return [currFocus, history];
+        }
         var nextFocus = null;
         if (isSplit(parent)) {
             if (parent.direction === "vertical") {
@@ -618,6 +673,9 @@ var getFocusRight = function (nodeState, currFocus) {
         var _a, _b;
         var parentId = currFocus.substring(0, currFocus.length - 1);
         var parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+        if (parentId === "") {
+            return [currFocus, history];
+        }
         var nextFocus = null;
         if (isSplit(parent)) {
             if (parent.direction === "horizontal") {
@@ -661,6 +719,9 @@ var getFocusLeft = function (nodeState, currFocus) {
         var _a, _b;
         var parentId = currFocus.substring(0, currFocus.length - 1);
         var parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+        if (parentId === "") {
+            return [currFocus, history];
+        }
         var nextFocus = null;
         if (isSplit(parent)) {
             if (parent.direction === "horizontal") {

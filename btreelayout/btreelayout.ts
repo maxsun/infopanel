@@ -182,36 +182,88 @@ const bNodeToHTML = (
         e.stopPropagation();
       };
 
-      handle.ontouchstart = (e) => {
-        onHandleSelect({
-          nodeId: id,
-          handle: classname,
-          initX: (e.touches[0].screenX / window.innerWidth) * 100,
-          initY: (e.touches[0].screenY / window.innerHeight) * 100,
-        });
-      };
+      // handle.ontouchstart = (e) => {
+      //   onHandleSelect({
+      //     nodeId: id,
+      //     handle: classname,
+      //     initX: (e.touches[0].screenX / window.innerWidth) * 100,
+      //     initY: (e.touches[0].screenY / window.innerHeight) * 100,
+      //   });
+      // };
 
-      handle.ontouchmove = (e) => {
-        if (selectedHandle) {
-          let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-          let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-          if (
-            Math.abs(x - selectedHandle.initX) > 0.5 &&
-            Math.abs(y - selectedHandle.initY) > 0.5
-          ) {
-            onHandleDrag(x, y);
-            selectedHandle = {
-              nodeId: selectedHandle.nodeId,
-              handle: selectedHandle.handle,
-              initX: x,
-              initY: y,
-            };
-          }
-        }
-      };
+      // handle.ontouchmove = (e) => {
+      //   if (selectedHandle) {
+      //     let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+      //     let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+      //     if (
+      //       Math.abs(x - selectedHandle.initX) > 0.5 &&
+      //       Math.abs(y - selectedHandle.initY) > 0.5
+      //     ) {
+      //       onHandleDrag(x, y);
+      //       selectedHandle = {
+      //         nodeId: selectedHandle.nodeId,
+      //         handle: selectedHandle.handle,
+      //         initX: x,
+      //         initY: y,
+      //       };
+      //     }
+      //   }
+      // };
 
       return handle;
     };
+
+    contentWrapper.ontouchstart = (e) => {
+      console.log("!!!!!!");
+      selectedHandle = {
+        nodeId: id,
+        handle: "",
+        initX: (e.touches[0].screenX / window.innerWidth) * 100,
+        initY: (e.touches[0].screenY / window.innerHeight) * 100,
+      };
+    };
+
+    contentWrapper.ontouchmove = (e) => {
+      if (selectedHandle) {
+        let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+        let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+        if (
+          Math.abs(x - selectedHandle.initX) > 0.5 &&
+          Math.abs(y - selectedHandle.initY) > 0.5
+        ) {
+          let xdiff = x - selectedHandle.initX;
+          let ydiff = y - selectedHandle.initY;
+          let type = null;
+          if (xdiff >= 0) {
+            if (ydiff >= 0) {
+              type = "bottomright";
+            } else {
+              type = "topright";
+            }
+          } else {
+            if (ydiff <= 0) {
+              type = "bottomleft";
+            } else {
+              type = "topleft";
+            }
+          }
+          selectedHandle = {
+            nodeId: selectedHandle.nodeId,
+            handle: type,
+            initX: selectedHandle.initX,
+            initY: selectedHandle.initY,
+          };
+          onHandleDrag(x, y);
+          selectedHandle = {
+            nodeId: selectedHandle.nodeId,
+            handle: type,
+            initX: x,
+            initY: y,
+          };
+        }
+      }
+    };
+
     contentWrapper.appendChild(makeHandle("topleft"));
     contentWrapper.appendChild(makeHandle("topright"));
     contentWrapper.appendChild(makeHandle("bottomleft"));
@@ -743,6 +795,9 @@ const getFocusDown = (nodeState: BNode, currFocus: string): null | string => {
   ): [string, string[]] => {
     const parentId = currFocus.substring(0, currFocus.length - 1);
     const parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+    if (parentId === "") {
+      return [currFocus, history];
+    }
     let nextFocus = null;
     if (isSplit(parent)) {
       if (parent.direction === "vertical") {
@@ -789,6 +844,9 @@ const getFocusRight = (nodeState: BNode, currFocus: string): null | string => {
   ): [string, string[]] => {
     const parentId = currFocus.substring(0, currFocus.length - 1);
     const parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+    if (parentId === "") {
+      return [currFocus, history];
+    }
     let nextFocus = null;
     if (isSplit(parent)) {
       if (parent.direction === "horizontal") {
@@ -835,6 +893,9 @@ const getFocusLeft = (nodeState: BNode, currFocus: string): null | string => {
   ): [string, string[]] => {
     const parentId = currFocus.substring(0, currFocus.length - 1);
     const parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+    if (parentId === "") {
+      return [currFocus, history];
+    }
     let nextFocus = null;
     if (isSplit(parent)) {
       if (parent.direction === "horizontal") {
