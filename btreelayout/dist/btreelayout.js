@@ -130,13 +130,28 @@ var bNodeToHTML = function (node, id, focusedIds) {
                 e.stopPropagation();
             };
             handle.ontouchstart = function (e) {
-                console.log("handle touched", e);
                 onHandleSelect({
                     nodeId: id,
                     handle: classname,
                     initX: (e.touches[0].screenX / window.innerWidth) * 100,
                     initY: (e.touches[0].screenY / window.innerHeight) * 100,
                 });
+            };
+            handle.ontouchmove = function (e) {
+                if (selectedHandle) {
+                    var x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+                    var y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+                    if (Math.abs(x - selectedHandle.initX) > 0.5 &&
+                        Math.abs(y - selectedHandle.initY) > 0.5) {
+                        onHandleDrag(x, y);
+                        selectedHandle = {
+                            nodeId: selectedHandle.nodeId,
+                            handle: selectedHandle.handle,
+                            initX: x,
+                            initY: y,
+                        };
+                    }
+                }
             };
             return handle;
         };
@@ -154,14 +169,7 @@ var bNodeToHTML = function (node, id, focusedIds) {
     return result;
 };
 document.addEventListener("touchmove", function (e) {
-    console.log("!");
-    if (selectedHandle) {
-        console.log("move");
-        var x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-        var y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-        onHandleDrag(x, y);
-    }
-    // e.preventDefault();
+    e.preventDefault();
 }, { passive: false });
 var onHandleDrag = function (x, y) {
     handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
@@ -173,30 +181,17 @@ var onHandleDrag = function (x, y) {
         initY: y,
     };
 };
-document.ontouchmove = function (e) {
-    // console.log("!");
-    // if (selectedHandle) {
-    //   console.log("move");
-    //   let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-    //   let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-    //   onHandleDrag(x, y);
-    // }
-    // e.preventDefault();
-};
 document.onmousemove = function (e) {
-    // console.log(selectedHandle);
     if (selectedHandle) {
         var x = (e.clientX / window.innerWidth) * 100;
         var y = (e.clientY / window.innerHeight) * 100;
         onHandleDrag(x, y);
-        // handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
-        // render(document.body, STATE, []);
-        // selectedHandle = {
-        //   nodeId: selectedHandle.nodeId,
-        //   handle: selectedHandle.handle,
-        //   initX: (e.clientX / window.innerWidth) * 100,
-        //   initY: (e.clientY / window.innerHeight) * 100,
-        // };
+        selectedHandle = {
+            nodeId: selectedHandle.nodeId,
+            handle: selectedHandle.handle,
+            initX: (e.clientX / window.innerWidth) * 100,
+            initY: (e.clientY / window.innerHeight) * 100,
+        };
     }
 };
 var handleMouseUp = function (x, y) {
@@ -283,28 +278,10 @@ var handleMouseUp = function (x, y) {
     // selectedHandle = null;
 };
 document.onmouseup = function (e) {
-    if (selectedHandle) {
-        // handleMouseUp(
-        //   ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100,
-        //   ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100
-        // );
-    }
     selectedHandle = null;
 };
 document.ontouchend = function (e) {
     console.log("touch end");
-    // console.log(e, selectedHandle);
-    // if (selectedHandle) {
-    //   handleMouseUp(
-    //     ((e.changedTouches[0].screenX - selectedHandle.initX) /
-    //       window.innerWidth) *
-    //       100,
-    //     ((e.changedTouches[0].screenY - selectedHandle.initY) /
-    //       window.innerHeight) *
-    //       100
-    //   );
-    // }
-    // render(document.body, STATE, []);
     selectedHandle = null;
 };
 var render = function (root, node, focusedIds) {
