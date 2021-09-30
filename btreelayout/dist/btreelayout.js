@@ -113,15 +113,17 @@ var bNodeToHTML = function (node, id, focusedIds) {
         var makeHandle = function (classname) {
             var handle = document.createElement("div");
             handle.classList.add(classname, "handle");
+            var onHandleSelect = function (handleSpec) {
+                selectedHandle = handleSpec;
+            };
             handle.onmousedown = function (e) {
                 console.log("Handle Clicked for", id);
-                selectedHandle = {
-                    nodeId: id,
-                    handle: classname,
-                    initX: e.clientX,
-                    initY: e.clientY,
-                };
+                onHandleSelect({ nodeId: id, handle: classname, initX: e.clientX, initY: e.clientY });
                 e.stopPropagation();
+            };
+            handle.ontouchstart = function (e) {
+                console.log("handle touched", e);
+                onHandleSelect({ nodeId: id, handle: classname, initX: e.touches[0].screenX, initY: e.touches[0].screenY });
             };
             return handle;
         };
@@ -141,12 +143,13 @@ var bNodeToHTML = function (node, id, focusedIds) {
 document.onmousemove = function (e) {
     // console.log(selectedHandle);
 };
-document.onmouseup = function (e) {
+var handleMouseUp = function (x, y) {
     if (selectedHandle) {
         console.log(selectedHandle);
-        var diffX = ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100;
-        var diffY = ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100;
+        var diffX = x;
+        var diffY = y;
         console.log(diffX, diffY);
+        // return
         // horizontal move
         if (selectedHandle.handle === "topleft") {
             if (diffX > 0) {
@@ -221,6 +224,18 @@ document.onmouseup = function (e) {
         }
     }
     selectedHandle = null;
+};
+document.onmouseup = function (e) {
+    if (selectedHandle) {
+        handleMouseUp(((e.clientX - selectedHandle.initX) / window.innerWidth) * 100, ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100);
+    }
+};
+document.ontouchend = function (e) {
+    console.log(e, selectedHandle);
+    if (selectedHandle) {
+        handleMouseUp(((e.changedTouches[0].screenX - selectedHandle.initX) / window.innerWidth) * 100, ((e.changedTouches[0].screenY - selectedHandle.initY) / window.innerHeight) * 100);
+    }
+    render(document.body, STATE, []);
 };
 var render = function (root, node, focusedIds) {
     root.innerHTML = "";

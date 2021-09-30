@@ -159,16 +159,21 @@ const bNodeToHTML = (
     const makeHandle = (classname) => {
       const handle = document.createElement("div");
       handle.classList.add(classname, "handle");
+
+      const onHandleSelect = (handleSpec: {nodeId: string, handle: string, initX: number, initY: number}) => {
+        selectedHandle = handleSpec;
+      }
       handle.onmousedown = (e) => {
         console.log("Handle Clicked for", id);
-        selectedHandle = {
-          nodeId: id,
-          handle: classname,
-          initX: e.clientX,
-          initY: e.clientY,
-        };
+        onHandleSelect({nodeId: id, handle:classname, initX: e.clientX, initY: e.clientY});
         e.stopPropagation();
       };
+      
+      handle.ontouchstart = (e) => {
+        console.log("handle touched", e)
+        onHandleSelect({nodeId: id, handle:classname, initX: e.touches[0].screenX, initY: e.touches[0].screenY});
+      }
+
       return handle;
     };
     contentWrapper.appendChild(makeHandle("topleft"));
@@ -193,12 +198,14 @@ document.onmousemove = (e) => {
   // console.log(selectedHandle);
 };
 
-document.onmouseup = (e) => {
+
+const handleMouseUp = (x, y) => {
   if (selectedHandle) {
     console.log(selectedHandle);
-    let diffX = ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100;
-    let diffY = ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100;
+    let diffX = x;
+    let diffY = y;
     console.log(diffX, diffY);
+    // return
     // horizontal move
     if (selectedHandle.handle === "topleft") {
       if (diffX > 0) {
@@ -285,7 +292,25 @@ document.onmouseup = (e) => {
     }
   }
   selectedHandle = null;
+}
+
+document.onmouseup = (e) => {
+  if (selectedHandle) {
+    
+    handleMouseUp(((e.clientX - selectedHandle.initX) / window.innerWidth) * 100, ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100)
+  }
 };
+
+document.ontouchend = (e) => {
+  console.log(e, selectedHandle)
+  if (selectedHandle) {
+
+    
+    handleMouseUp(((e.changedTouches[0].screenX - selectedHandle.initX) / window.innerWidth) * 100, ((e.changedTouches[0].screenY - selectedHandle.initY) / window.innerHeight) * 100)
+  }
+  render(document.body, STATE, [])
+};
+
 
 const render = (
   root: HTMLElement,
