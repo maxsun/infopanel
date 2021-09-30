@@ -228,7 +228,7 @@ const bNodeToHTML = (
         let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
         let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
         if (
-          Math.abs(x - selectedHandle.initX) > 0.5 &&
+          Math.abs(x - selectedHandle.initX) > 0.5 ||
           Math.abs(y - selectedHandle.initY) > 0.5
         ) {
           let xdiff = x - selectedHandle.initX;

@@ -170,7 +170,7 @@ var bNodeToHTML = function (node, id, focusedIds) {
             if (selectedHandle) {
                 var x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
                 var y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-                if (Math.abs(x - selectedHandle.initX) > 0.5 &&
+                if (Math.abs(x - selectedHandle.initX) > 0.5 ||
                     Math.abs(y - selectedHandle.initY) > 0.5) {
                     var xdiff = x - selectedHandle.initX;
                     var ydiff = y - selectedHandle.initY;
