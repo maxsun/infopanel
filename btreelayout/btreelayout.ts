@@ -194,6 +194,10 @@ const bNodeToHTML = (
   return result;
 };
 
+document.ontouchmove = (e) => {
+  e.preventDefault();
+}
+
 document.onmousemove = (e) => {
   // console.log(selectedHandle);
 };

@@ -140,6 +140,9 @@ var bNodeToHTML = function (node, id, focusedIds) {
     }
     return result;
 };
+document.ontouchmove = function (e) {
+    e.preventDefault();
+};
 document.onmousemove = function (e) {
     // console.log(selectedHandle);
 };
