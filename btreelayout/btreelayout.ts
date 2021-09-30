@@ -73,6 +73,10 @@ const splitToHTML = (
     }
   };
 
+  container.ondrag = (evt) => {
+    console.log("!!!", evt);
+  };
+
   document.onkeydown = (evt) => {
     let newFocus = [];
     let n = null;
@@ -160,19 +164,34 @@ const bNodeToHTML = (
       const handle = document.createElement("div");
       handle.classList.add(classname, "handle");
 
-      const onHandleSelect = (handleSpec: {nodeId: string, handle: string, initX: number, initY: number}) => {
+      const onHandleSelect = (handleSpec: {
+        nodeId: string;
+        handle: string;
+        initX: number;
+        initY: number;
+      }) => {
         selectedHandle = handleSpec;
-      }
+      };
       handle.onmousedown = (e) => {
         console.log("Handle Clicked for", id);
-        onHandleSelect({nodeId: id, handle:classname, initX: e.clientX, initY: e.clientY});
+        onHandleSelect({
+          nodeId: id,
+          handle: classname,
+          initX: (e.clientX / window.innerWidth) * 100,
+          initY: (e.clientY / window.innerHeight) * 100,
+        });
         e.stopPropagation();
       };
-      
+
       handle.ontouchstart = (e) => {
-        console.log("handle touched", e)
-        onHandleSelect({nodeId: id, handle:classname, initX: e.touches[0].screenX, initY: e.touches[0].screenY});
-      }
+        console.log("handle touched", e);
+        onHandleSelect({
+          nodeId: id,
+          handle: classname,
+          initX: (e.touches[0].screenX / window.innerWidth) * 100,
+          initY: (e.touches[0].screenY / window.innerHeight) * 100,
+        });
+      };
 
       return handle;
     };
@@ -194,22 +213,64 @@ const bNodeToHTML = (
   return result;
 };
 
+document.addEventListener(
+  "touchmove",
+  (e) => {
+    console.log("!");
+    if (selectedHandle) {
+      console.log("move");
+      let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+      let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+      onHandleDrag(x, y);
+    }
 
+    // e.preventDefault();
+  },
+  { passive: false }
+);
 
-document.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-}, { passive:false });
+const onHandleDrag = (x, y) => {
+  handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
+  render(document.body, STATE, []);
+  selectedHandle = {
+    nodeId: selectedHandle.nodeId,
+    handle: selectedHandle.handle,
+    initX: x,
+    initY: y,
+  };
+};
 
-// document.ontouchmove = (e) => {
-//   e.preventDefault();
-// }
+document.ontouchmove = (e) => {
+  // console.log("!");
+  // if (selectedHandle) {
+  //   console.log("move");
+  //   let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+  //   let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+  //   onHandleDrag(x, y);
+  // }
+  // e.preventDefault();
+};
 
 document.onmousemove = (e) => {
   // console.log(selectedHandle);
+
+  if (selectedHandle) {
+    let x = (e.clientX / window.innerWidth) * 100;
+    let y = (e.clientY / window.innerHeight) * 100;
+    onHandleDrag(x, y);
+    // handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
+    // render(document.body, STATE, []);
+    // selectedHandle = {
+    //   nodeId: selectedHandle.nodeId,
+    //   handle: selectedHandle.handle,
+    //   initX: (e.clientX / window.innerWidth) * 100,
+    //   initY: (e.clientY / window.innerHeight) * 100,
+    // };
+  }
 };
 
-
 const handleMouseUp = (x, y) => {
+  console.log(">>", x, y);
   if (selectedHandle) {
     console.log(selectedHandle);
     let diffX = x;
@@ -301,26 +362,35 @@ const handleMouseUp = (x, y) => {
       throw Error("Trying to move unknown type of handle");
     }
   }
-  selectedHandle = null;
-}
+  // selectedHandle = null;
+};
 
 document.onmouseup = (e) => {
   if (selectedHandle) {
-    
-    handleMouseUp(((e.clientX - selectedHandle.initX) / window.innerWidth) * 100, ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100)
+    // handleMouseUp(
+    //   ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100,
+    //   ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100
+    // );
   }
+  selectedHandle = null;
 };
 
 document.ontouchend = (e) => {
-  console.log(e, selectedHandle)
-  if (selectedHandle) {
-
-    
-    handleMouseUp(((e.changedTouches[0].screenX - selectedHandle.initX) / window.innerWidth) * 100, ((e.changedTouches[0].screenY - selectedHandle.initY) / window.innerHeight) * 100)
-  }
-  render(document.body, STATE, [])
+  console.log("touch end");
+  // console.log(e, selectedHandle);
+  // if (selectedHandle) {
+  //   handleMouseUp(
+  //     ((e.changedTouches[0].screenX - selectedHandle.initX) /
+  //       window.innerWidth) *
+  //       100,
+  //     ((e.changedTouches[0].screenY - selectedHandle.initY) /
+  //       window.innerHeight) *
+  //       100
+  //   );
+  // }
+  // render(document.body, STATE, []);
+  selectedHandle = null;
 };
-
 
 const render = (
   root: HTMLElement,
@@ -400,12 +470,12 @@ const nudge = (
   bias: number,
   absolute?: boolean
 ) => {
-  console.log(`Nudging ${id} ${direction} ${bias}`);
+  // console.log(`Nudging ${id} ${direction} ${bias}`);
 
   absolute = absolute ? absolute : false;
 
   if (id.replace("root", "") === "") {
-    console.log("Tried to nudge, but nowhere to go");
+    // console.log("Tried to nudge, but nowhere to go");
     return root;
   }
 
@@ -421,13 +491,13 @@ const nudge = (
 
     // check if moving against edge of parent split. if so, nudge parent
     if ((bias > 0 && lastchr === "1") || (bias < 0 && lastchr == "0")) {
-      console.log(`Trying to move ${direction}, but cant. Will nudge parent.`);
+      // console.log(`Trying to move ${direction}, but cant. Will nudge parent.`);
       let nudgedParent = nudge(root, parentId, direction, bias, absolute);
-      console.log(
-        "Nudged parent:",
-        nudgedParent,
-        "now have to normalize children"
-      );
+      // console.log(
+      //   "Nudged parent:",
+      //   nudgedParent,
+      //   "now have to normalize children"
+      // );
 
       const getChangedIds = (
         node1: BNode,
@@ -465,10 +535,10 @@ const nudge = (
         changes[changeId] = delta;
       });
 
-      console.log(`up-tree changes (while nudging ${id}):`, changes);
-      changedIds = Object.keys(changes).sort((a: string, b: string) =>
-        a.length < b.length ? -1 : 1
-      );
+      // console.log(`up-tree changes (while nudging ${id}):`, changes);
+      // changedIds = Object.keys(changes).sort((a: string, b: string) =>
+      //   a.length < b.length ? -1 : 1
+      // );
 
       let oldSize = getAbsoluteSizeOfNode(root, parentId, direction);
       let newSize = getAbsoluteSizeOfNode(nudgedParent, parentId, direction);
@@ -486,19 +556,19 @@ const nudge = (
         direction
       );
 
-      console.log(`Parent (${parentId}) offset: ${oldOffset} => ${newOffset}`);
+      // console.log(`Parent (${parentId}) offset: ${oldOffset} => ${newOffset}`);
 
       let o = oldOffset + oldSize * (parentNode.pos / 100);
 
-      console.log(`We want to keep the split pos at ${o}`);
-      console.log(`If we set the pos to 0, it would be at ${parentOffset}`);
-      console.log(
-        `If we set the pos to 100, it would be at ${parentOffset + newSize}`
-      );
+      // console.log(`We want to keep the split pos at ${o}`);
+      // console.log(`If we set the pos to 0, it would be at ${parentOffset}`);
+      // console.log(
+      //   `If we set the pos to 100, it would be at ${parentOffset + newSize}`
+      // );
 
       // If we set the pos to x, its abs position is: parentOffset + (x / 100) * newSize
       let newPos = ((o - parentOffset) / newSize) * 100;
-      console.log("New pos is:", newPos);
+      // console.log("New pos is:", newPos);
 
       let newParent = {
         fst: parentNode.fst,
@@ -511,12 +581,12 @@ const nudge = (
 
     let x = 1;
     if (absolute) {
-      console.log("Performing pos move for nudge on:", parentId);
-      console.log(`Trying to move the line ${bias}% of root.`);
+      // console.log("Performing pos move for nudge on:", parentId);
+      // console.log(`Trying to move the line ${bias}% of root.`);
       const parentSize = getAbsoluteSizeOfNode(root, parentId, direction);
-      console.log("Parent size is:", parentSize);
+      // console.log("Parent size is:", parentSize);
       const rootSize = 100;
-      console.log("Root size is:", rootSize);
+      // console.log("Root size is:", rootSize);
       x = rootSize / parentSize;
     }
 
@@ -528,9 +598,9 @@ const nudge = (
     };
     return replaceNode(root, parentId.replace("root", ""), newSplitParent);
   }
-  console.log(
-    "nudging cell in wrong direction -- nudging first available parent"
-  );
+  // console.log(
+  //   "nudging cell in wrong direction -- nudging first available parent"
+  // );
   return nudge(root, parentId, direction, bias, absolute);
 };
 
@@ -647,7 +717,7 @@ const getFocusUp = (nodeState: BNode, currFocus: string): null | string => {
   ): [string, string[]] => {
     const parentId = currFocus.substring(0, currFocus.length - 1);
     const parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
-    console.log("PARENT IS", parentId);
+    // console.log("PARENT IS", parentId);
     if (parentId === "") {
       return [currFocus, history];
     }

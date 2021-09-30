@@ -42,6 +42,9 @@ var splitToHTML = function (split, id, focusedIds) {
             render(document.body, STATE, newFocus);
         }
     };
+    container.ondrag = function (evt) {
+        console.log("!!!", evt);
+    };
     document.onkeydown = function (evt) {
         var newFocus = [];
         var n = null;
@@ -118,12 +121,22 @@ var bNodeToHTML = function (node, id, focusedIds) {
             };
             handle.onmousedown = function (e) {
                 console.log("Handle Clicked for", id);
-                onHandleSelect({ nodeId: id, handle: classname, initX: e.clientX, initY: e.clientY });
+                onHandleSelect({
+                    nodeId: id,
+                    handle: classname,
+                    initX: (e.clientX / window.innerWidth) * 100,
+                    initY: (e.clientY / window.innerHeight) * 100,
+                });
                 e.stopPropagation();
             };
             handle.ontouchstart = function (e) {
                 console.log("handle touched", e);
-                onHandleSelect({ nodeId: id, handle: classname, initX: e.touches[0].screenX, initY: e.touches[0].screenY });
+                onHandleSelect({
+                    nodeId: id,
+                    handle: classname,
+                    initX: (e.touches[0].screenX / window.innerWidth) * 100,
+                    initY: (e.touches[0].screenY / window.innerHeight) * 100,
+                });
             };
             return handle;
         };
@@ -140,16 +153,54 @@ var bNodeToHTML = function (node, id, focusedIds) {
     }
     return result;
 };
-document.addEventListener('touchmove', function (e) {
-    e.preventDefault();
+document.addEventListener("touchmove", function (e) {
+    console.log("!");
+    if (selectedHandle) {
+        console.log("move");
+        var x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+        var y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+        onHandleDrag(x, y);
+    }
+    // e.preventDefault();
 }, { passive: false });
-// document.ontouchmove = (e) => {
-//   e.preventDefault();
-// }
+var onHandleDrag = function (x, y) {
+    handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
+    render(document.body, STATE, []);
+    selectedHandle = {
+        nodeId: selectedHandle.nodeId,
+        handle: selectedHandle.handle,
+        initX: x,
+        initY: y,
+    };
+};
+document.ontouchmove = function (e) {
+    // console.log("!");
+    // if (selectedHandle) {
+    //   console.log("move");
+    //   let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
+    //   let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
+    //   onHandleDrag(x, y);
+    // }
+    // e.preventDefault();
+};
 document.onmousemove = function (e) {
     // console.log(selectedHandle);
+    if (selectedHandle) {
+        var x = (e.clientX / window.innerWidth) * 100;
+        var y = (e.clientY / window.innerHeight) * 100;
+        onHandleDrag(x, y);
+        // handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
+        // render(document.body, STATE, []);
+        // selectedHandle = {
+        //   nodeId: selectedHandle.nodeId,
+        //   handle: selectedHandle.handle,
+        //   initX: (e.clientX / window.innerWidth) * 100,
+        //   initY: (e.clientY / window.innerHeight) * 100,
+        // };
+    }
 };
 var handleMouseUp = function (x, y) {
+    console.log(">>", x, y);
     if (selectedHandle) {
         console.log(selectedHandle);
         var diffX = x;
@@ -229,19 +280,32 @@ var handleMouseUp = function (x, y) {
             throw Error("Trying to move unknown type of handle");
         }
     }
-    selectedHandle = null;
+    // selectedHandle = null;
 };
 document.onmouseup = function (e) {
     if (selectedHandle) {
-        handleMouseUp(((e.clientX - selectedHandle.initX) / window.innerWidth) * 100, ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100);
+        // handleMouseUp(
+        //   ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100,
+        //   ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100
+        // );
     }
+    selectedHandle = null;
 };
 document.ontouchend = function (e) {
-    console.log(e, selectedHandle);
-    if (selectedHandle) {
-        handleMouseUp(((e.changedTouches[0].screenX - selectedHandle.initX) / window.innerWidth) * 100, ((e.changedTouches[0].screenY - selectedHandle.initY) / window.innerHeight) * 100);
-    }
-    render(document.body, STATE, []);
+    console.log("touch end");
+    // console.log(e, selectedHandle);
+    // if (selectedHandle) {
+    //   handleMouseUp(
+    //     ((e.changedTouches[0].screenX - selectedHandle.initX) /
+    //       window.innerWidth) *
+    //       100,
+    //     ((e.changedTouches[0].screenY - selectedHandle.initY) /
+    //       window.innerHeight) *
+    //       100
+    //   );
+    // }
+    // render(document.body, STATE, []);
+    selectedHandle = null;
 };
 var render = function (root, node, focusedIds) {
     root.innerHTML = "";
@@ -308,10 +372,10 @@ var deleteNode = function (root, id) {
     return replaceNode(root, parentId.replace("root", ""), r);
 };
 var nudge = function (root, id, direction, bias, absolute) {
-    console.log("Nudging " + id + " " + direction + " " + bias);
+    // console.log(`Nudging ${id} ${direction} ${bias}`);
     absolute = absolute ? absolute : false;
     if (id.replace("root", "") === "") {
-        console.log("Tried to nudge, but nowhere to go");
+        // console.log("Tried to nudge, but nowhere to go");
         return root;
     }
     var parentId = id.substring(0, id.length - 1);
@@ -324,9 +388,13 @@ var nudge = function (root, id, direction, bias, absolute) {
         var lastchr = id.charAt(id.length - 1);
         // check if moving against edge of parent split. if so, nudge parent
         if ((bias > 0 && lastchr === "1") || (bias < 0 && lastchr == "0")) {
-            console.log("Trying to move " + direction + ", but cant. Will nudge parent.");
+            // console.log(`Trying to move ${direction}, but cant. Will nudge parent.`);
             var nudgedParent_1 = nudge(root, parentId, direction, bias, absolute);
-            console.log("Nudged parent:", nudgedParent_1, "now have to normalize children");
+            // console.log(
+            //   "Nudged parent:",
+            //   nudgedParent,
+            //   "now have to normalize children"
+            // );
             var getChangedIds_1 = function (node1, node2, id) {
                 if ((isContent(node1) && isSplit(node2)) ||
                     (isSplit(node1) && isContent(node2))) {
@@ -355,23 +423,25 @@ var nudge = function (root, id, direction, bias, absolute) {
                 var delta = npos - opos;
                 changes_1[changeId] = delta;
             });
-            console.log("up-tree changes (while nudging " + id + "):", changes_1);
-            changedIds = Object.keys(changes_1).sort(function (a, b) {
-                return a.length < b.length ? -1 : 1;
-            });
+            // console.log(`up-tree changes (while nudging ${id}):`, changes);
+            // changedIds = Object.keys(changes).sort((a: string, b: string) =>
+            //   a.length < b.length ? -1 : 1
+            // );
             var oldSize = getAbsoluteSizeOfNode(root, parentId, direction);
             var newSize = getAbsoluteSizeOfNode(nudgedParent_1, parentId, direction);
             var oldOffset = getAbsoluteOffsetOfNode(root, parentId, direction);
             var newOffset = getAbsoluteOffsetOfNode(nudgedParent_1, parentId, direction);
             var parentOffset = getAbsoluteOffsetOfNode(nudgedParent_1, parentId, direction);
-            console.log("Parent (" + parentId + ") offset: " + oldOffset + " => " + newOffset);
+            // console.log(`Parent (${parentId}) offset: ${oldOffset} => ${newOffset}`);
             var o = oldOffset + oldSize * (parentNode.pos / 100);
-            console.log("We want to keep the split pos at " + o);
-            console.log("If we set the pos to 0, it would be at " + parentOffset);
-            console.log("If we set the pos to 100, it would be at " + (parentOffset + newSize));
+            // console.log(`We want to keep the split pos at ${o}`);
+            // console.log(`If we set the pos to 0, it would be at ${parentOffset}`);
+            // console.log(
+            //   `If we set the pos to 100, it would be at ${parentOffset + newSize}`
+            // );
             // If we set the pos to x, its abs position is: parentOffset + (x / 100) * newSize
             var newPos = ((o - parentOffset) / newSize) * 100;
-            console.log("New pos is:", newPos);
+            // console.log("New pos is:", newPos);
             var newParent = {
                 fst: parentNode.fst,
                 snd: parentNode.snd,
@@ -382,12 +452,12 @@ var nudge = function (root, id, direction, bias, absolute) {
         }
         var x = 1;
         if (absolute) {
-            console.log("Performing pos move for nudge on:", parentId);
-            console.log("Trying to move the line " + bias + "% of root.");
+            // console.log("Performing pos move for nudge on:", parentId);
+            // console.log(`Trying to move the line ${bias}% of root.`);
             var parentSize = getAbsoluteSizeOfNode(root, parentId, direction);
-            console.log("Parent size is:", parentSize);
+            // console.log("Parent size is:", parentSize);
             var rootSize = 100;
-            console.log("Root size is:", rootSize);
+            // console.log("Root size is:", rootSize);
             x = rootSize / parentSize;
         }
         var newSplitParent = {
@@ -398,7 +468,9 @@ var nudge = function (root, id, direction, bias, absolute) {
         };
         return replaceNode(root, parentId.replace("root", ""), newSplitParent);
     }
-    console.log("nudging cell in wrong direction -- nudging first available parent");
+    // console.log(
+    //   "nudging cell in wrong direction -- nudging first available parent"
+    // );
     return nudge(root, parentId, direction, bias, absolute);
 };
 var getAbsoluteSizeOfNode = function (rootNode, id, direction) {
@@ -479,7 +551,7 @@ var getFocusUp = function (nodeState, currFocus) {
         var _a, _b;
         var parentId = currFocus.substring(0, currFocus.length - 1);
         var parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
-        console.log("PARENT IS", parentId);
+        // console.log("PARENT IS", parentId);
         if (parentId === "") {
             return [currFocus, history];
         }
