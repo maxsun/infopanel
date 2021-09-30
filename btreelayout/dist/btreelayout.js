@@ -1,6 +1,7 @@
 "use strict";
 // TYPES
-var BORDER_WIDTH = 5;
+var PADDING_SIZE = 0;
+var selectedHandle = null;
 var isSplit = function (n) {
     return (n &&
         "fst" in n &&
@@ -20,10 +21,15 @@ var splitToHTML = function (split, id, focusedIds) {
     var container = document.createElement("div");
     container.id = id;
     container.classList.add("container", split.direction);
-    var fstChild = bNodeToHTML(split.fst, id + "0", focusedIds);
+    var fstChild = document.createElement("div");
+    fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds));
     fstChild.classList.add("fst");
-    fstChild.style[split.direction === "horizontal" ? "width" : "height"] = "calc(" + split.pos + "% - " + 2 * BORDER_WIDTH + "px)";
-    var sndChild = bNodeToHTML(split.snd, id + "1", focusedIds);
+    // fstChild.style[
+    //   split.direction === "horizontal" ? "width" : "height"
+    // ] = `calc(${split.pos}%`;
+    fstChild.style[split.direction === "horizontal" ? "width" : "height"] = "calc(" + split.pos + "% - " + 2 * PADDING_SIZE + "px)";
+    var sndChild = document.createElement("div");
+    sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds));
     sndChild.classList.add("snd");
     container.append(fstChild, sndChild);
     container.onclick = function (evt) {
@@ -32,7 +38,7 @@ var splitToHTML = function (split, id, focusedIds) {
             var newFocus = [t.id];
             var selectedNode = getBNodeByKey(STATE, t.id.replace("root", ""));
             console.log("selected:", t.id, selectedNode);
-            evt.stopPropagation();
+            // evt.stopPropagation();
             render(document.body, STATE, newFocus);
         }
     };
@@ -42,18 +48,16 @@ var splitToHTML = function (split, id, focusedIds) {
         console.log(evt);
         if (evt.shiftKey) {
             if (evt.key === "ArrowUp") {
-                STATE = nudge(STATE, focusedIds[0], "vertical", -1);
+                STATE = nudge(STATE, focusedIds[0], "vertical", -5, true);
             }
             if (evt.key === "ArrowDown") {
-                STATE = nudge(STATE, focusedIds[0], "vertical", 1);
-                // n = getFocusDown(STATE, focusedIds[0]);
+                STATE = nudge(STATE, focusedIds[0], "vertical", 5, true);
             }
             if (evt.key === "ArrowRight") {
-                // STATE = nudgeHorizontal(STATE, focusedIds[0], -1);
-                STATE = nudge(STATE, focusedIds[0], "horizontal", 1);
+                STATE = nudge(STATE, focusedIds[0], "horizontal", 5, true);
             }
             if (evt.key === "ArrowLeft") {
-                STATE = nudge(STATE, focusedIds[0], "horizontal", -1);
+                STATE = nudge(STATE, focusedIds[0], "horizontal", -5, true);
             }
         }
         else {
@@ -72,6 +76,7 @@ var splitToHTML = function (split, id, focusedIds) {
         }
         if (evt.key === "Enter") {
             STATE = insertSplit(STATE, focusedIds[0]);
+            n = focusedIds + "0";
         }
         if (evt.key === "Backspace") {
             STATE = deleteNode(STATE, focusedIds[0]);
@@ -95,8 +100,6 @@ var splitToHTML = function (split, id, focusedIds) {
 var bNodeToHTML = function (node, id, focusedIds) {
     focusedIds = focusedIds ? focusedIds : [];
     id = id ? id : "root";
-    // const nodeElem = document.createElement("div");
-    // nodeElem.classList.add("node");
     var result = null;
     if (isSplit(node)) {
         result = splitToHTML(node, id, focusedIds);
@@ -107,8 +110,26 @@ var bNodeToHTML = function (node, id, focusedIds) {
         contentWrapper.id = id;
         var tempdiv = document.createElement("div");
         tempdiv.appendChild(document.createTextNode(id));
+        var makeHandle = function (classname) {
+            var handle = document.createElement("div");
+            handle.classList.add(classname, "handle");
+            handle.onmousedown = function (e) {
+                console.log("Handle Clicked for", id);
+                selectedHandle = {
+                    nodeId: id,
+                    handle: classname,
+                    initX: e.clientX,
+                    initY: e.clientY,
+                };
+                e.stopPropagation();
+            };
+            return handle;
+        };
+        contentWrapper.appendChild(makeHandle("topleft"));
+        contentWrapper.appendChild(makeHandle("topright"));
+        contentWrapper.appendChild(makeHandle("bottomleft"));
+        contentWrapper.appendChild(makeHandle("bottomright"));
         contentWrapper.appendChild(tempdiv);
-        // contentWrapper.appendChild(node);
         result = contentWrapper;
         // result = tempdiv;
     }
@@ -116,6 +137,90 @@ var bNodeToHTML = function (node, id, focusedIds) {
         result.classList.add("focused");
     }
     return result;
+};
+document.onmousemove = function (e) {
+    // console.log(selectedHandle);
+};
+document.onmouseup = function (e) {
+    if (selectedHandle) {
+        console.log(selectedHandle);
+        var diffX = ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100;
+        var diffY = ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100;
+        console.log(diffX, diffY);
+        // horizontal move
+        if (selectedHandle.handle === "topleft") {
+            if (diffX > 0) {
+                var leftId = getFocusLeft(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+            }
+            else {
+                STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+            }
+            //vertical move
+            if (diffY < 0) {
+                STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+            }
+            else {
+                var upperId = getFocusUp(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, upperId, "vertical", diffY, true);
+            }
+            // render(document.body, STATE, []);
+        }
+        else if (selectedHandle.handle === "topright") {
+            // top right handle
+            if (diffX < 0) {
+                var leftId = getFocusRight(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+            }
+            else {
+                STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+            }
+            //vertical move
+            if (diffY < 0) {
+                STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+            }
+            else {
+                var upperId = getFocusUp(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, upperId, "vertical", diffY, true);
+            }
+        }
+        else if (selectedHandle.handle === "bottomleft") {
+            if (diffX > 0) {
+                var leftId = getFocusLeft(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+            }
+            else {
+                STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+            }
+            if (diffY > 0) {
+                STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+            }
+            else {
+                var upperId = getFocusDown(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, upperId, "vertical", diffY, true);
+            }
+        }
+        else if (selectedHandle.handle === "bottomright") {
+            if (diffX < 0) {
+                var leftId = getFocusRight(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+            }
+            else {
+                STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+            }
+            if (diffY > 0) {
+                STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+            }
+            else {
+                var upperId = getFocusDown(STATE, selectedHandle.nodeId.replace("root", ""));
+                STATE = nudge(STATE, upperId, "vertical", diffY, true);
+            }
+        }
+        else {
+            throw Error("Trying to move unknown type of handle");
+        }
+    }
+    selectedHandle = null;
 };
 var render = function (root, node, focusedIds) {
     root.innerHTML = "";
@@ -181,8 +286,9 @@ var deleteNode = function (root, id) {
     }
     return replaceNode(root, parentId.replace("root", ""), r);
 };
-var nudge = function (root, id, direction, bias) {
+var nudge = function (root, id, direction, bias, absolute) {
     console.log("Nudging " + id + " " + direction + " " + bias);
+    absolute = absolute ? absolute : false;
     if (id.replace("root", "") === "") {
         console.log("Tried to nudge, but nowhere to go");
         return root;
@@ -198,67 +304,125 @@ var nudge = function (root, id, direction, bias) {
         // check if moving against edge of parent split. if so, nudge parent
         if ((bias > 0 && lastchr === "1") || (bias < 0 && lastchr == "0")) {
             console.log("Trying to move " + direction + ", but cant. Will nudge parent.");
-            var nudgedParent = nudge(root, parentId, direction, bias);
-            console.log("Nudged parent:", nudgedParent, "now have to normalize children");
-            var getIdOfHighestChange_1 = function (node1, node2, id) {
-                console.log("Comparing", node1, node2);
-                if (isContent(node1) && isContent(node2) && node1 !== node2) {
-                    return id;
+            var nudgedParent_1 = nudge(root, parentId, direction, bias, absolute);
+            console.log("Nudged parent:", nudgedParent_1, "now have to normalize children");
+            var getChangedIds_1 = function (node1, node2, id) {
+                if ((isContent(node1) && isSplit(node2)) ||
+                    (isSplit(node1) && isContent(node2))) {
+                    throw Error("comparison is off somehoow");
                 }
                 if (isSplit(node1) && isSplit(node2)) {
-                    if (node1.pos !== node2.pos) {
-                        console.log("found it!");
-                        return id;
+                    var changedFst = getChangedIds_1(node1.fst, node2.fst, id + "0");
+                    var changedSnd = getChangedIds_1(node1.snd, node2.snd, id + "1");
+                    if (node1.pos != node2.pos) {
+                        return changedFst.concat(changedSnd).concat([id]);
                     }
-                    else {
-                        return [
-                            getIdOfHighestChange_1(node1.fst, node2.fst, id + "0"),
-                            getIdOfHighestChange_1(node1.snd, node2.snd, id + "1"),
-                        ].sort(function (a, b) { return (a.length < b.length ? 1 : -1); })[0];
-                    }
+                    return changedFst.concat(changedSnd);
                 }
+                if (isContent(node1) && isContent(node2)) {
+                    return node1 !== node2 ? [id] : [];
+                }
+                console.log("UNEXPECTED:", node1, node2);
             };
-            var z = getIdOfHighestChange_1(root, nudgedParent, "");
-            var gp = getBNodeByKey(root, z);
-            var nudgedGp = getBNodeByKey(nudgedParent, z);
-            console.log(">>", gp);
-            console.log(">?>", nudgedGp);
-            var opos = gp.pos;
-            if (id.charAt(id.length - 1) === "0")
-                opos = 100 - opos;
-            var npos = nudgedGp.pos;
-            if (id.charAt(id.length - 1) === "0")
-                npos = 100 - npos;
-            var q = (npos - opos) / opos;
-            // q = q * 1.05;
-            // q = -q * 0.95;
-            console.log(">", opos, npos, q);
-            if (opos === undefined) {
-                return nudgedParent;
-            }
-            // after nudging, the parent's width will have increased by:
-            // 5%
+            var changes_1 = {};
+            var changedIds = getChangedIds_1(root, nudgedParent_1, "");
+            changedIds.forEach(function (changeId) {
+                var original = getBNodeByKey(root, changeId);
+                var nudged = getBNodeByKey(nudgedParent_1, changeId);
+                var opos = original.pos;
+                var npos = nudged.pos;
+                var delta = npos - opos;
+                changes_1[changeId] = delta;
+            });
+            console.log("up-tree changes (while nudging " + id + "):", changes_1);
+            changedIds = Object.keys(changes_1).sort(function (a, b) {
+                return a.length < b.length ? -1 : 1;
+            });
+            var oldSize = getAbsoluteSizeOfNode(root, parentId, direction);
+            var newSize = getAbsoluteSizeOfNode(nudgedParent_1, parentId, direction);
+            var oldOffset = getAbsoluteOffsetOfNode(root, parentId, direction);
+            var newOffset = getAbsoluteOffsetOfNode(nudgedParent_1, parentId, direction);
+            var parentOffset = getAbsoluteOffsetOfNode(nudgedParent_1, parentId, direction);
+            console.log("Parent (" + parentId + ") offset: " + oldOffset + " => " + newOffset);
+            var o = oldOffset + oldSize * (parentNode.pos / 100);
+            console.log("We want to keep the split pos at " + o);
+            console.log("If we set the pos to 0, it would be at " + parentOffset);
+            console.log("If we set the pos to 100, it would be at " + (parentOffset + newSize));
+            // If we set the pos to x, its abs position is: parentOffset + (x / 100) * newSize
+            var newPos = ((o - parentOffset) / newSize) * 100;
+            console.log("New pos is:", newPos);
             var newParent = {
                 fst: parentNode.fst,
                 snd: parentNode.snd,
-                pos: id.charAt(id.length - 1) === "0"
-                    ? 100 - (100 - parentNode.pos) / (1 + q)
-                    : parentNode.pos / (1 + q),
-                // pos: parentNode.pos,
+                pos: newPos,
                 direction: parentNode.direction,
             };
-            return replaceNode(nudgedParent, parentId.replace("root", ""), newParent);
+            return replaceNode(nudgedParent_1, parentId.replace("root", ""), newParent);
+        }
+        var x = 1;
+        if (absolute) {
+            console.log("Performing pos move for nudge on:", parentId);
+            console.log("Trying to move the line " + bias + "% of root.");
+            var parentSize = getAbsoluteSizeOfNode(root, parentId, direction);
+            console.log("Parent size is:", parentSize);
+            var rootSize = 100;
+            console.log("Root size is:", rootSize);
+            x = rootSize / parentSize;
         }
         var newSplitParent = {
             fst: parentNode.fst,
             snd: parentNode.snd,
-            pos: parentNode.pos + bias * 5,
+            pos: Math.max(0, Math.min(100, parentNode.pos + bias * x)),
             direction: parentNode.direction,
         };
         return replaceNode(root, parentId.replace("root", ""), newSplitParent);
     }
     console.log("nudging cell in wrong direction -- nudging first available parent");
-    return nudge(root, parentId, direction, bias);
+    return nudge(root, parentId, direction, bias, absolute);
+};
+var getAbsoluteSizeOfNode = function (rootNode, id, direction) {
+    // the output is 0-100 representing percent size of root, who's size never changes
+    if (id.replace("root", "") === "") {
+        return 100;
+    }
+    var ancestorId = id.slice(0, id.length - 1);
+    var ancestorNode = getBNodeByKey(rootNode, ancestorId.replace("root", ""));
+    if (ancestorNode.direction !== direction) {
+        return getAbsoluteSizeOfNode(rootNode, ancestorId, direction);
+    }
+    if (id
+        .replace("root", "")
+        .replace(ancestorId.replace("root", ""), "")
+        .charAt(0) === "0") {
+        return ((ancestorNode.pos / 100) *
+            getAbsoluteSizeOfNode(rootNode, ancestorId, direction));
+    }
+    else {
+        return (((100 - ancestorNode.pos) / 100) *
+            getAbsoluteSizeOfNode(rootNode, ancestorId, direction));
+    }
+};
+var getAbsoluteOffsetOfNode = function (rootNode, id, direction) {
+    // the output is 0-100 representing percent size of root, who's size never changes
+    if (id.replace("root", "") === "") {
+        return 0;
+    }
+    var ancestorId = id.slice(0, id.length - 1);
+    var ancestorNode = getBNodeByKey(rootNode, ancestorId.replace("root", ""));
+    if (ancestorNode.direction !== direction) {
+        return 0 + getAbsoluteOffsetOfNode(rootNode, ancestorId, direction);
+    }
+    if (id
+        .replace("root", "")
+        .replace(ancestorId.replace("root", ""), "")
+        .charAt(0) === "0") {
+        return 0 + getAbsoluteOffsetOfNode(rootNode, ancestorId, direction);
+    }
+    else {
+        return ((ancestorNode.pos / 100) *
+            getAbsoluteSizeOfNode(rootNode, ancestorId, direction) +
+            getAbsoluteOffsetOfNode(rootNode, ancestorId, direction));
+    }
 };
 var rotateSplit = function (rootNode, id) {
     var parentId = id.substring(0, id.length - 1);
@@ -294,6 +458,10 @@ var getFocusUp = function (nodeState, currFocus) {
         var _a, _b;
         var parentId = currFocus.substring(0, currFocus.length - 1);
         var parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+        console.log("PARENT IS", parentId);
+        if (parentId === "") {
+            return [currFocus, history];
+        }
         var nextFocus = null;
         if (isSplit(parent)) {
             if (parent.direction === "vertical") {
@@ -465,66 +633,40 @@ var getFocusLeft = function (nodeState, currFocus) {
 var img = document.createElement("img");
 img.src =
     "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fboricua.com%2Fwp-content%2Fuploads%2F2021%2F09%2Fnew-york-city-billboards.jpg&f=1&nofb=1";
-// let STATE: BNode = {
-//   fst: {
-//     fst: document.createTextNode("hel"),
-//     snd: document.createTextNode("llo"),
-//     pos: 50,
-//     direction: "vertical",
-//   },
-//   snd: {
-//     fst: {
-//       fst: document.createTextNode("wor"),
-//       snd: {
-//         fst: {
-//           fst: document.createTextNode("l"),
-//           snd: img,
-//           pos: 50,
-//           direction: "horizontal",
-//         },
-//         snd: document.createTextNode("d"),
-//         pos: 50,
-//         direction: "horizontal",
-//       },
-//       pos: 25,
-//       direction: "vertical",
-//     },
-//     snd: {
-//       fst: document.createTextNode("!"),
-//       snd: document.createTextNode("??"),
-//       pos: 50,
-//       direction: "horizontal",
-//     },
-//     pos: 50,
-//     direction: "vertical",
-//   },
-//   pos: 25,
-//   direction: "horizontal",
-// };
 var STATE = {
+    fst: {
+        fst: document.createTextNode("hel"),
+        snd: document.createTextNode("llo"),
+        pos: 50,
+        direction: "vertical",
+    },
     snd: {
-        fst: document.createTextNode("l"),
-        snd: {
-            fst: {
-                fst: document.createTextNode("1"),
-                snd: {
-                    fst: document.createTextNode("2"),
-                    snd: document.createTextNode("3"),
-                    pos: 25,
-                    direction: "vertical",
+        fst: {
+            fst: document.createTextNode("wor"),
+            snd: {
+                fst: {
+                    fst: document.createTextNode("l"),
+                    snd: img,
+                    pos: 50,
+                    direction: "horizontal",
                 },
+                snd: document.createTextNode("d"),
                 pos: 50,
-                direction: "vertical",
+                direction: "horizontal",
             },
-            snd: document.createTextNode("2"),
-            pos: 50,
+            pos: 25,
             direction: "vertical",
         },
+        snd: {
+            fst: document.createTextNode("!"),
+            snd: document.createTextNode("??"),
+            pos: 50,
+            direction: "horizontal",
+        },
         pos: 50,
-        direction: "horizontal",
+        direction: "vertical",
     },
-    fst: document.createTextNode("d"),
-    pos: 50,
+    pos: 25,
     direction: "horizontal",
 };
 render(document.body, STATE, []);

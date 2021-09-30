@@ -9,6 +9,8 @@ interface Split {
 
 const PADDING_SIZE = 0;
 
+let selectedHandle = null;
+
 const isSplit = (n: any): n is Split => {
   return (
     n &&
@@ -42,7 +44,8 @@ const splitToHTML = (
   container.id = id;
   container.classList.add("container", split.direction);
 
-  const fstChild = bNodeToHTML(split.fst, id + "0", focusedIds);
+  const fstChild = document.createElement("div");
+  fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds));
   fstChild.classList.add("fst");
 
   // fstChild.style[
@@ -52,7 +55,8 @@ const splitToHTML = (
     split.direction === "horizontal" ? "width" : "height"
   ] = `calc(${split.pos}% - ${2 * PADDING_SIZE}px)`;
 
-  const sndChild = bNodeToHTML(split.snd, id + "1", focusedIds);
+  const sndChild = document.createElement("div");
+  sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds));
   sndChild.classList.add("snd");
 
   container.append(fstChild, sndChild);
@@ -64,7 +68,7 @@ const splitToHTML = (
       let selectedNode = getBNodeByKey(STATE, t.id.replace("root", ""));
       console.log("selected:", t.id, selectedNode);
 
-      evt.stopPropagation();
+      // evt.stopPropagation();
       render(document.body, STATE, newFocus);
     }
   };
@@ -140,8 +144,6 @@ const bNodeToHTML = (
 ): HTMLElement => {
   focusedIds = focusedIds ? focusedIds : [];
   id = id ? id : "root";
-  // const nodeElem = document.createElement("div");
-  // nodeElem.classList.add("node");
 
   let result = null;
   if (isSplit(node)) {
@@ -154,9 +156,30 @@ const bNodeToHTML = (
     let tempdiv = document.createElement("div");
     tempdiv.appendChild(document.createTextNode(id));
 
+    const makeHandle = (classname) => {
+      const handle = document.createElement("div");
+      handle.classList.add(classname, "handle");
+      handle.onmousedown = (e) => {
+        console.log("Handle Clicked for", id);
+        selectedHandle = {
+          nodeId: id,
+          handle: classname,
+          initX: e.clientX,
+          initY: e.clientY,
+        };
+        e.stopPropagation();
+      };
+      return handle;
+    };
+    contentWrapper.appendChild(makeHandle("topleft"));
+    contentWrapper.appendChild(makeHandle("topright"));
+    contentWrapper.appendChild(makeHandle("bottomleft"));
+    contentWrapper.appendChild(makeHandle("bottomright"));
+
     contentWrapper.appendChild(tempdiv);
-    // contentWrapper.appendChild(node);
+
     result = contentWrapper;
+
     // result = tempdiv;
   }
   if (focusedIds.indexOf(id) !== -1) {
@@ -164,6 +187,104 @@ const bNodeToHTML = (
   }
 
   return result;
+};
+
+document.onmousemove = (e) => {
+  // console.log(selectedHandle);
+};
+
+document.onmouseup = (e) => {
+  if (selectedHandle) {
+    console.log(selectedHandle);
+    let diffX = ((e.clientX - selectedHandle.initX) / window.innerWidth) * 100;
+    let diffY = ((e.clientY - selectedHandle.initY) / window.innerHeight) * 100;
+    console.log(diffX, diffY);
+    // horizontal move
+    if (selectedHandle.handle === "topleft") {
+      if (diffX > 0) {
+        let leftId = getFocusLeft(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+      } else {
+        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+      }
+      //vertical move
+      if (diffY < 0) {
+        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+      } else {
+        let upperId = getFocusUp(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, upperId, "vertical", diffY, true);
+      }
+      // render(document.body, STATE, []);
+    } else if (selectedHandle.handle === "topright") {
+      // top right handle
+      if (diffX < 0) {
+        let leftId = getFocusRight(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+      } else {
+        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+      }
+      //vertical move
+      if (diffY < 0) {
+        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+      } else {
+        let upperId = getFocusUp(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, upperId, "vertical", diffY, true);
+      }
+    } else if (selectedHandle.handle === "bottomleft") {
+      if (diffX > 0) {
+        let leftId = getFocusLeft(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+      } else {
+        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+      }
+      if (diffY > 0) {
+        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+      } else {
+        let upperId = getFocusDown(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, upperId, "vertical", diffY, true);
+      }
+    } else if (selectedHandle.handle === "bottomright") {
+      if (diffX < 0) {
+        let leftId = getFocusRight(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
+      } else {
+        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
+      }
+      if (diffY > 0) {
+        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
+      } else {
+        let upperId = getFocusDown(
+          STATE,
+          selectedHandle.nodeId.replace("root", "")
+        );
+        STATE = nudge(STATE, upperId, "vertical", diffY, true);
+      }
+    } else {
+      throw Error("Trying to move unknown type of handle");
+    }
+  }
+  selectedHandle = null;
 };
 
 const render = (
@@ -367,7 +488,7 @@ const nudge = (
     let newSplitParent: BNode = {
       fst: parentNode.fst,
       snd: parentNode.snd,
-      pos: parentNode.pos + bias * x,
+      pos: Math.max(0, Math.min(100, parentNode.pos + bias * x)),
       direction: parentNode.direction,
     };
     return replaceNode(root, parentId.replace("root", ""), newSplitParent);
@@ -491,6 +612,10 @@ const getFocusUp = (nodeState: BNode, currFocus: string): null | string => {
   ): [string, string[]] => {
     const parentId = currFocus.substring(0, currFocus.length - 1);
     const parent = getBNodeByKey(nodeState, parentId.replace("root", ""));
+    console.log("PARENT IS", parentId);
+    if (parentId === "") {
+      return [currFocus, history];
+    }
     let nextFocus = null;
     if (isSplit(parent)) {
       if (parent.direction === "vertical") {
@@ -674,82 +799,41 @@ let img = document.createElement("img");
 img.src =
   "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fboricua.com%2Fwp-content%2Fuploads%2F2021%2F09%2Fnew-york-city-billboards.jpg&f=1&nofb=1";
 
-// let STATE: BNode = {
-//   fst: {
-//     fst: document.createTextNode("hel"),
-//     snd: document.createTextNode("llo"),
-//     pos: 50,
-//     direction: "vertical",
-//   },
-//   snd: {
-//     fst: {
-//       fst: document.createTextNode("wor"),
-//       snd: {
-//         fst: {
-//           fst: document.createTextNode("l"),
-//           snd: img,
-//           pos: 50,
-//           direction: "horizontal",
-//         },
-//         snd: document.createTextNode("d"),
-//         pos: 50,
-//         direction: "horizontal",
-//       },
-//       pos: 25,
-//       direction: "vertical",
-//     },
-//     snd: {
-//       fst: document.createTextNode("!"),
-//       snd: document.createTextNode("??"),
-//       pos: 50,
-//       direction: "horizontal",
-//     },
-//     pos: 50,
-//     direction: "vertical",
-//   },
-//   pos: 25,
-//   direction: "horizontal",
-// };
-
 let STATE: BNode = {
-  fst: document.createTextNode("2"),
+  fst: {
+    fst: document.createTextNode("hel"),
+    snd: document.createTextNode("llo"),
+    pos: 50,
+    direction: "vertical",
+  },
   snd: {
     fst: {
+      fst: document.createTextNode("wor"),
       snd: {
-        fst: document.createTextNode("2"),
-        snd: document.createTextNode("2"),
+        fst: {
+          fst: document.createTextNode("l"),
+          snd: img,
+          pos: 50,
+          direction: "horizontal",
+        },
+        snd: document.createTextNode("d"),
         pos: 50,
         direction: "horizontal",
       },
-      fst: document.createTextNode("2"),
+      pos: 25,
+      direction: "vertical",
+    },
+    snd: {
+      fst: document.createTextNode("!"),
+      snd: document.createTextNode("??"),
       pos: 50,
       direction: "horizontal",
     },
-    // fst: document.createTextNode("2"),
-    snd: document.createTextNode("2"),
     pos: 50,
-    direction: "horizontal",
+    direction: "vertical",
   },
-  pos: 50,
+  pos: 25,
   direction: "horizontal",
 };
-
-// let STATE: BNode = {
-//   snd: document.createTextNode("2"),
-//   fst: {
-//     fst: {
-//       fst: document.createTextNode("2"),
-//       snd: document.createTextNode("2"),
-//       pos: 50,
-//       direction: "horizontal",
-//     },
-//     // fst: document.createTextNode("2"),
-//     snd: document.createTextNode("2"),
-//     pos: 50,
-//     direction: "horizontal",
-//   },
-//   pos: 50,
-//   direction: "horizontal",
-// };
 
 render(document.body, STATE, []);
