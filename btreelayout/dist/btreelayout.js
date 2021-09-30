@@ -140,9 +140,12 @@ var bNodeToHTML = function (node, id, focusedIds) {
     }
     return result;
 };
-document.ontouchmove = function (e) {
+document.addEventListener('touchmove', function (e) {
     e.preventDefault();
-};
+}, { passive: false });
+// document.ontouchmove = (e) => {
+//   e.preventDefault();
+// }
 document.onmousemove = function (e) {
     // console.log(selectedHandle);
 };
@@ -648,9 +651,9 @@ var getFocusLeft = function (nodeState, currFocus) {
     return getRightMost(nextFocus, history);
 };
 // INIT
-var img = document.createElement("img");
-img.src =
-    "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fboricua.com%2Fwp-content%2Fuploads%2F2021%2F09%2Fnew-york-city-billboards.jpg&f=1&nofb=1";
+// let img = document.createElement("img");
+// img.src =
+//   "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fboricua.com%2Fwp-content%2Fuploads%2F2021%2F09%2Fnew-york-city-billboards.jpg&f=1&nofb=1";
 var STATE = {
     fst: {
         fst: document.createTextNode("hel"),
@@ -664,7 +667,7 @@ var STATE = {
             snd: {
                 fst: {
                     fst: document.createTextNode("l"),
-                    snd: img,
+                    snd: document.createTextNode("l"),
                     pos: 50,
                     direction: "horizontal",
                 },
