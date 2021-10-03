@@ -1,437 +1,7 @@
-// TYPES
-
-interface Split {
-  fst: BNode;
-  snd: BNode;
-  pos: number; // 0-100 representing split percentage taken by fst
-  direction: "vertical" | "horizontal";
-}
-
-const PADDING_SIZE = 0;
-let selectedHandle = null;
-
-const isSplit = (n: any): n is Split => {
-  return (
-    n &&
-    "fst" in n &&
-    isBNode(n.fst) &&
-    "snd" in n &&
-    isBNode(n.snd) &&
-    "pos" in n
-  );
-};
-
-type Content = HTMLElement | Text;
-const isContent = (n: any): n is Content => {
-  return n instanceof HTMLElement || n instanceof Text;
-};
-
-type BNode = Split | Content;
-
-const isBNode = (n: any): n is BNode => {
-  return isContent(n) || isSplit(n);
-};
-
-// RENDERING
-
-const splitToHTML = (
-  split: Split,
-  id?: string,
-  focusedIds?: string[]
-): HTMLElement => {
-  const container = document.createElement("div");
-  container.id = id;
-  container.classList.add("container", split.direction);
-
-  const fstChild = document.createElement("div");
-  fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds));
-  fstChild.classList.add("fst");
-
-  // fstChild.style[
-  //   split.direction === "horizontal" ? "width" : "height"
-  // ] = `calc(${split.pos}%`;
-  fstChild.style[
-    split.direction === "horizontal" ? "width" : "height"
-  ] = `calc(${split.pos}% - ${2 * PADDING_SIZE}px)`;
-
-  const sndChild = document.createElement("div");
-  sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds));
-  sndChild.classList.add("snd");
-
-  container.append(fstChild, sndChild);
-
-  container.onclick = (evt) => {
-    let t = evt.target as Element;
-    if (true) {
-      let newFocus = [t.id];
-      let selectedNode = getBNodeByKey(STATE, t.id.replace("root", ""));
-      console.log("selected:", t.id, selectedNode);
-
-      // evt.stopPropagation();
-      render(document.body, STATE, newFocus);
-    }
-  };
-
-  container.ondrag = (evt) => {
-    console.log("!!!", evt);
-  };
-
-  document.onkeydown = (evt) => {
-    let newFocus = [];
-    let n = null;
-    console.log(evt);
-    if (evt.shiftKey) {
-      if (evt.key === "ArrowUp") {
-        STATE = nudge(STATE, focusedIds[0], "vertical", -5, true);
-      }
-      if (evt.key === "ArrowDown") {
-        STATE = nudge(STATE, focusedIds[0], "vertical", 5, true);
-      }
-      if (evt.key === "ArrowRight") {
-        STATE = nudge(STATE, focusedIds[0], "horizontal", 5, true);
-      }
-      if (evt.key === "ArrowLeft") {
-        STATE = nudge(STATE, focusedIds[0], "horizontal", -5, true);
-      }
-    } else {
-      if (evt.key === "ArrowUp") {
-        n = getFocusUp(STATE, focusedIds[0]);
-      }
-      if (evt.key === "ArrowDown") {
-        n = getFocusDown(STATE, focusedIds[0]);
-      }
-      if (evt.key === "ArrowRight") {
-        n = getFocusRight(STATE, focusedIds[0]);
-      }
-      if (evt.key === "ArrowLeft") {
-        n = getFocusLeft(STATE, focusedIds[0]);
-      }
-    }
-    if (evt.key === "Enter") {
-      STATE = insertSplit(STATE, focusedIds[0]);
-      n = focusedIds + "0";
-    }
-    if (evt.key === "Backspace") {
-      STATE = deleteNode(STATE, focusedIds[0]);
-    }
-    if (evt.key === "+") {
-      let lastChar = focusedIds[0].charAt(focusedIds[0].length - 1);
-      STATE = adjustSplitSize(
-        STATE,
-        focusedIds[0],
-        5 * (lastChar === "0" ? 1 : -1)
-      );
-    }
-    if (evt.key === "-") {
-      let lastChar = focusedIds[0].charAt(focusedIds[0].length - 1);
-
-      STATE = adjustSplitSize(
-        STATE,
-        focusedIds[0],
-        -5 * (lastChar === "0" ? 1 : -1)
-      );
-    }
-    if (evt.key === "r") {
-      STATE = rotateSplit(STATE, focusedIds[0]);
-    }
-    newFocus.push(n !== null ? n : focusedIds[0]);
-    render(document.body, STATE, newFocus);
-  };
-  return container;
-};
-
-const bNodeToHTML = (
-  node: BNode,
-  id?: string,
-  focusedIds?: string[]
-): HTMLElement => {
-  focusedIds = focusedIds ? focusedIds : [];
-  id = id ? id : "root";
-
-  let result = null;
-  if (isSplit(node)) {
-    result = splitToHTML(node, id, focusedIds);
-  } else if (isContent(node)) {
-    let contentWrapper = document.createElement("div");
-    contentWrapper.classList.add("content");
-    contentWrapper.id = id;
-
-    let tempdiv = document.createElement("div");
-    tempdiv.appendChild(document.createTextNode(id));
-
-    const makeHandle = (classname) => {
-      const handle = document.createElement("div");
-      handle.classList.add(classname, "handle");
-
-      const onHandleSelect = (handleSpec: {
-        nodeId: string;
-        handle: string;
-        initX: number;
-        initY: number;
-      }) => {
-        selectedHandle = handleSpec;
-      };
-      handle.onmousedown = (e) => {
-        console.log("Handle Clicked for", id);
-        onHandleSelect({
-          nodeId: id,
-          handle: classname,
-          initX: (e.clientX / window.innerWidth) * 100,
-          initY: (e.clientY / window.innerHeight) * 100,
-        });
-        e.stopPropagation();
-      };
-
-      // handle.ontouchstart = (e) => {
-      //   onHandleSelect({
-      //     nodeId: id,
-      //     handle: classname,
-      //     initX: (e.touches[0].screenX / window.innerWidth) * 100,
-      //     initY: (e.touches[0].screenY / window.innerHeight) * 100,
-      //   });
-      // };
-
-      // handle.ontouchmove = (e) => {
-      //   if (selectedHandle) {
-      //     let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-      //     let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-      //     if (
-      //       Math.abs(x - selectedHandle.initX) > 0.5 &&
-      //       Math.abs(y - selectedHandle.initY) > 0.5
-      //     ) {
-      //       onHandleDrag(x, y);
-      //       selectedHandle = {
-      //         nodeId: selectedHandle.nodeId,
-      //         handle: selectedHandle.handle,
-      //         initX: x,
-      //         initY: y,
-      //       };
-      //     }
-      //   }
-      // };
-
-      return handle;
-    };
-
-    contentWrapper.ontouchstart = (e) => {
-      console.log("!!!!!!");
-      selectedHandle = {
-        nodeId: id,
-        handle: "",
-        initX: (e.touches[0].screenX / window.innerWidth) * 100,
-        initY: (e.touches[0].screenY / window.innerHeight) * 100,
-      };
-    };
-
-    contentWrapper.ontouchmove = (e) => {
-      if (selectedHandle) {
-        let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-        let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-        if (
-          Math.abs(x - selectedHandle.initX) > 0.5 ||
-          Math.abs(y - selectedHandle.initY) > 0.5
-        ) {
-          let xdiff = x - selectedHandle.initX;
-          let ydiff = y - selectedHandle.initY;
-          let type = null;
-          if (xdiff >= 0) {
-            if (ydiff >= 0) {
-              type = "bottomright";
-            } else {
-              type = "topright";
-            }
-          } else {
-            if (ydiff <= 0) {
-              type = "bottomleft";
-            } else {
-              type = "topleft";
-            }
-          }
-          selectedHandle = {
-            nodeId: selectedHandle.nodeId,
-            handle: type,
-            initX: selectedHandle.initX,
-            initY: selectedHandle.initY,
-          };
-          onHandleDrag(x, y);
-          selectedHandle = {
-            nodeId: selectedHandle.nodeId,
-            handle: type,
-            initX: x,
-            initY: y,
-          };
-        }
-      }
-    };
-
-    contentWrapper.appendChild(makeHandle("topleft"));
-    contentWrapper.appendChild(makeHandle("topright"));
-    contentWrapper.appendChild(makeHandle("bottomleft"));
-    contentWrapper.appendChild(makeHandle("bottomright"));
-
-    contentWrapper.appendChild(tempdiv);
-
-    result = contentWrapper;
-
-    // result = tempdiv;
-  }
-  if (focusedIds.indexOf(id) !== -1) {
-    result.classList.add("focused");
-  }
-
-  return result;
-};
-
-document.addEventListener(
-  "touchmove",
-  (e) => {
-    e.preventDefault();
-  },
-  { passive: false }
-);
-
-const onHandleDrag = (x, y) => {
-  handleMouseUp(x - selectedHandle.initX, y - selectedHandle.initY);
-  render(document.body, STATE, []);
-  selectedHandle = {
-    nodeId: selectedHandle.nodeId,
-    handle: selectedHandle.handle,
-    initX: x,
-    initY: y,
-  };
-};
-
-document.onmousemove = (e) => {
-  if (selectedHandle) {
-    let x = (e.clientX / window.innerWidth) * 100;
-    let y = (e.clientY / window.innerHeight) * 100;
-    onHandleDrag(x, y);
-    selectedHandle = {
-      nodeId: selectedHandle.nodeId,
-      handle: selectedHandle.handle,
-      initX: (e.clientX / window.innerWidth) * 100,
-      initY: (e.clientY / window.innerHeight) * 100,
-    };
-  }
-};
-
-const handleMouseUp = (x, y) => {
-  console.log(">>", x, y);
-  if (selectedHandle) {
-    console.log(selectedHandle);
-    let diffX = x;
-    let diffY = y;
-    console.log(diffX, diffY);
-    // return
-    // horizontal move
-    if (selectedHandle.handle === "topleft") {
-      if (diffX > 0) {
-        let leftId = getFocusLeft(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-      } else {
-        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-      }
-      //vertical move
-      if (diffY < 0) {
-        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-      } else {
-        let upperId = getFocusUp(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, upperId, "vertical", diffY, true);
-      }
-      // render(document.body, STATE, []);
-    } else if (selectedHandle.handle === "topright") {
-      // top right handle
-      if (diffX < 0) {
-        let leftId = getFocusRight(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-      } else {
-        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-      }
-      //vertical move
-      if (diffY < 0) {
-        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-      } else {
-        let upperId = getFocusUp(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, upperId, "vertical", diffY, true);
-      }
-    } else if (selectedHandle.handle === "bottomleft") {
-      if (diffX > 0) {
-        let leftId = getFocusLeft(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-      } else {
-        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-      }
-      if (diffY > 0) {
-        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-      } else {
-        let upperId = getFocusDown(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, upperId, "vertical", diffY, true);
-      }
-    } else if (selectedHandle.handle === "bottomright") {
-      if (diffX < 0) {
-        let leftId = getFocusRight(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-      } else {
-        STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-      }
-      if (diffY > 0) {
-        STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-      } else {
-        let upperId = getFocusDown(
-          STATE,
-          selectedHandle.nodeId.replace("root", "")
-        );
-        STATE = nudge(STATE, upperId, "vertical", diffY, true);
-      }
-    } else {
-      throw Error("Trying to move unknown type of handle");
-    }
-  }
-  // selectedHandle = null;
-};
-
-document.onmouseup = (e) => {
-  selectedHandle = null;
-};
-
-document.ontouchend = (e) => {
-  console.log("touch end");
-  selectedHandle = null;
-};
-
-const render = (
-  root: HTMLElement,
-  node: BNode,
-  focusedIds?: string[]
-): void => {
-  root.innerHTML = "";
-  root.appendChild(bNodeToHTML(node, "root", focusedIds));
-};
-
 // UTILS
+import { BNode, Content, isContent, Split, isSplit, Handle } from "./types";
 
-const getBNodeByKey = (rootNode: BNode, id: string): null | BNode => {
+export const getBNodeByKey = (rootNode: BNode, id: string): null | BNode => {
   if (id === "") return rootNode;
   if (isContent(rootNode)) return null;
   if (isSplit(rootNode)) {
@@ -443,7 +13,7 @@ const getBNodeByKey = (rootNode: BNode, id: string): null | BNode => {
   }
 };
 
-const replaceNode = (
+export const replaceNode = (
   original: BNode,
   to_replace: string,
   new_node: BNode
@@ -469,7 +39,7 @@ const replaceNode = (
   }
 };
 
-const insertSplit = (root: BNode, id: string): BNode => {
+export const insertSplit = (root: BNode, id: string): BNode => {
   let toInsert: BNode = {
     fst: document.createElement("div"),
     snd: getBNodeByKey(root, id.replace("root", "")),
@@ -479,7 +49,7 @@ const insertSplit = (root: BNode, id: string): BNode => {
   return replaceNode(root, id.replace("root", ""), toInsert);
 };
 
-const deleteNode = (root: BNode, id: string): BNode => {
+export const deleteNode = (root: BNode, id: string): BNode => {
   let parentId = id.substring(0, id.length - 1);
   let parent = getBNodeByKey(root, parentId.replace("root", "")) as Split;
   let r = null;
@@ -491,13 +61,13 @@ const deleteNode = (root: BNode, id: string): BNode => {
   return replaceNode(root, parentId.replace("root", ""), r);
 };
 
-const nudge = (
+export const nudge = (
   root: BNode,
   id: string,
   direction: string,
   bias: number,
   absolute?: boolean
-) => {
+): BNode => {
   // console.log(`Nudging ${id} ${direction} ${bias}`);
 
   absolute = absolute ? absolute : false;
@@ -552,7 +122,7 @@ const nudge = (
         console.log("UNEXPECTED:", node1, node2);
       };
 
-      let changes = {};
+      let changes: { [nid: string]: number } = {};
       let changedIds = getChangedIds(root, nudgedParent, "");
       changedIds.forEach((changeId) => {
         let original = getBNodeByKey(root, changeId) as Split;
@@ -632,7 +202,7 @@ const nudge = (
   return nudge(root, parentId, direction, bias, absolute);
 };
 
-const getAbsoluteSizeOfNode = (
+export const getAbsoluteSizeOfNode = (
   rootNode: BNode,
   id: string,
   direction: string
@@ -668,7 +238,7 @@ const getAbsoluteSizeOfNode = (
   }
 };
 
-const getAbsoluteOffsetOfNode = (
+export const getAbsoluteOffsetOfNode = (
   rootNode: BNode,
   id: string,
   direction: string
@@ -702,7 +272,7 @@ const getAbsoluteOffsetOfNode = (
   }
 };
 
-const rotateSplit = (rootNode: BNode, id: string): BNode => {
+export const rotateSplit = (rootNode: BNode, id: string): BNode => {
   let parentId = id.substring(0, id.length - 1);
   let parent = getBNodeByKey(rootNode, parentId.replace("root", ""));
   if (isContent(parent))
@@ -718,7 +288,11 @@ const rotateSplit = (rootNode: BNode, id: string): BNode => {
   return replaceNode(rootNode, parentId.replace("root", ""), newParent);
 };
 
-const adjustSplitSize = (rootNode: BNode, id: string, delta: number): BNode => {
+export const adjustSplitSize = (
+  rootNode: BNode,
+  id: string,
+  delta: number
+): BNode => {
   let parentId = id.substring(0, id.length - 1);
   console.log(parentId);
   let parent = getBNodeByKey(rootNode, parentId.replace("root", ""));
@@ -734,11 +308,12 @@ const adjustSplitSize = (rootNode: BNode, id: string, delta: number): BNode => {
   };
 
   return replaceNode(rootNode, parentId.replace("root", ""), newParent);
-
-  // return parent;
 };
 
-const getFocusUp = (nodeState: BNode, currFocus: string): null | string => {
+export const getFocusUp = (
+  nodeState: BNode,
+  currFocus: string
+): null | string => {
   const getFirstNodeUp = (
     currFocus: string,
     history: string[]
@@ -772,8 +347,8 @@ const getFocusUp = (nodeState: BNode, currFocus: string): null | string => {
   let [nextFocus, history] = getFirstNodeUp(currFocus, []);
   if (!nextFocus) return null;
 
-  const getBottomMost = (n: string, horizontalPrefs: string[]) => {
-    let currNode = getBNodeByKey(STATE, n.replace("root", ""));
+  const getBottomMost = (n: string, horizontalPrefs: string[]): string => {
+    let currNode = getBNodeByKey(nodeState, n.replace("root", ""));
     if (isContent(currNode)) return n;
     if (isSplit(currNode)) {
       if (currNode.direction === "horizontal") {
@@ -788,7 +363,10 @@ const getFocusUp = (nodeState: BNode, currFocus: string): null | string => {
   return getBottomMost(nextFocus, history);
 };
 
-const getFocusDown = (nodeState: BNode, currFocus: string): null | string => {
+export const getFocusDown = (
+  nodeState: BNode,
+  currFocus: string
+): null | string => {
   const getFirstNodeDown = (
     currFocus: string,
     history: string[]
@@ -821,8 +399,8 @@ const getFocusDown = (nodeState: BNode, currFocus: string): null | string => {
   let [nextFocus, history] = getFirstNodeDown(currFocus, []);
   if (!nextFocus) return null;
 
-  const getTopMost = (n: string, horizontalPrefs: string[]) => {
-    let currNode = getBNodeByKey(STATE, n.replace("root", ""));
+  const getTopMost = (n: string, horizontalPrefs: string[]): string => {
+    let currNode = getBNodeByKey(nodeState, n.replace("root", ""));
     if (isContent(currNode)) return n;
     if (isSplit(currNode)) {
       if (currNode.direction === "horizontal") {
@@ -837,7 +415,10 @@ const getFocusDown = (nodeState: BNode, currFocus: string): null | string => {
   return getTopMost(nextFocus, history);
 };
 
-const getFocusRight = (nodeState: BNode, currFocus: string): null | string => {
+export const getFocusRight = (
+  nodeState: BNode,
+  currFocus: string
+): null | string => {
   const getFirstNodeRight = (
     currFocus: string,
     history: string[]
@@ -870,8 +451,8 @@ const getFocusRight = (nodeState: BNode, currFocus: string): null | string => {
   let [nextFocus, history] = getFirstNodeRight(currFocus, []);
   if (!nextFocus) return null;
 
-  const getLeftMost = (n: string, horizontalPrefs: string[]) => {
-    let currNode = getBNodeByKey(STATE, n.replace("root", ""));
+  const getLeftMost = (n: string, horizontalPrefs: string[]): string => {
+    let currNode = getBNodeByKey(nodeState, n.replace("root", ""));
     if (isContent(currNode)) return n;
     if (isSplit(currNode)) {
       if (currNode.direction === "vertical") {
@@ -886,7 +467,10 @@ const getFocusRight = (nodeState: BNode, currFocus: string): null | string => {
   return getLeftMost(nextFocus, history);
 };
 
-const getFocusLeft = (nodeState: BNode, currFocus: string): null | string => {
+export const getFocusLeft = (
+  nodeState: BNode,
+  currFocus: string
+): null | string => {
   const getFirstNodeLeft = (
     currFocus: string,
     history: string[]
@@ -919,8 +503,8 @@ const getFocusLeft = (nodeState: BNode, currFocus: string): null | string => {
   let [nextFocus, history] = getFirstNodeLeft(currFocus, []);
   if (!nextFocus) return null;
 
-  const getRightMost = (n: string, horizontalPrefs: string[]) => {
-    let currNode = getBNodeByKey(STATE, n.replace("root", ""));
+  const getRightMost = (n: string, horizontalPrefs: string[]): string => {
+    let currNode = getBNodeByKey(nodeState, n.replace("root", ""));
     if (isContent(currNode)) return n;
     if (isSplit(currNode)) {
       if (currNode.direction === "vertical") {
@@ -934,48 +518,3 @@ const getFocusLeft = (nodeState: BNode, currFocus: string): null | string => {
   };
   return getRightMost(nextFocus, history);
 };
-
-// INIT
-
-// let img = document.createElement("img");
-// img.src =
-//   "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fboricua.com%2Fwp-content%2Fuploads%2F2021%2F09%2Fnew-york-city-billboards.jpg&f=1&nofb=1";
-
-let STATE: BNode = {
-  fst: {
-    fst: document.createTextNode("hel"),
-    snd: document.createTextNode("llo"),
-    pos: 50,
-    direction: "vertical",
-  },
-  snd: {
-    fst: {
-      fst: document.createTextNode("wor"),
-      snd: {
-        fst: {
-          fst: document.createTextNode("l"),
-          snd: document.createTextNode("l"),
-          pos: 50,
-          direction: "horizontal",
-        },
-        snd: document.createTextNode("d"),
-        pos: 50,
-        direction: "horizontal",
-      },
-      pos: 25,
-      direction: "vertical",
-    },
-    snd: {
-      fst: document.createTextNode("!"),
-      snd: document.createTextNode("??"),
-      pos: 50,
-      direction: "horizontal",
-    },
-    pos: 50,
-    direction: "vertical",
-  },
-  pos: 25,
-  direction: "horizontal",
-};
-
-render(document.body, STATE, []);
