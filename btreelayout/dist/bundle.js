@@ -464,42 +464,27 @@ __webpack_require__.r(__webpack_exports__);
 
 
 var PADDING_SIZE = 0;
-var splitToHTML = function (split, id, focusedIds, onClick) {
+var splitToHTML = function (split, id, focusedIds, handlers) {
     var container = document.createElement("div");
     container.id = id;
     container.classList.add("container", split.direction);
     var fstChild = document.createElement("div");
-    fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds));
+    fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds, handlers));
     fstChild.classList.add("fst");
     fstChild.style[split.direction === "horizontal" ? "width" : "height"] = "calc(" + split.pos + "% - " + 2 * PADDING_SIZE + "px)";
     var sndChild = document.createElement("div");
-    sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds));
+    sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds, handlers));
     sndChild.classList.add("snd");
     container.append(fstChild, sndChild);
-    container.onclick = onClick;
-    //   container.onclick = (evt) => {
-    //     let t = evt.target as Element;
-    //     if (true) {
-    //       let newFocus = [t.id];
-    //       let selectedNode = getBNodeByKey(STATE, t.id.replace("root", ""));
-    //       console.log("selected:", t.id, selectedNode);
-    //       render(document.body, STATE, newFocus);
-    //     }
-    //   };
-    //   container.ondrag = (evt) => {
-    //     console.log("!!!", evt);
-    //   };
-    //     newFocus.push(n !== null ? n : focusedIds[0]);
-    //     render(document.body, STATE, newFocus);
-    //   };
+    container.onclick = handlers.onClick;
     return container;
 };
-var bNodeToHTML = function (node, id, focusedIds, onClick) {
+var bNodeToHTML = function (node, id, focusedIds, handlers) {
     focusedIds = focusedIds ? focusedIds : [];
     id = id ? id : "root";
     var result = null;
     if ((0,_types__WEBPACK_IMPORTED_MODULE_0__.isSplit)(node)) {
-        result = splitToHTML(node, id, focusedIds, onClick);
+        result = splitToHTML(node, id, focusedIds, handlers);
     }
     else if ((0,_types__WEBPACK_IMPORTED_MODULE_0__.isContent)(node)) {
         var contentWrapper = document.createElement("div");
@@ -507,83 +492,15 @@ var bNodeToHTML = function (node, id, focusedIds, onClick) {
         contentWrapper.id = id;
         var tempdiv = document.createElement("div");
         tempdiv.appendChild(document.createTextNode(id));
-        // const makeHandle = (classname: string) => {
-        //   const handle = document.createElement("div");
-        //   handle.classList.add(classname, "handle");
-        //   const onHandleSelect = (handleSpec: {
-        //     nodeId: string;
-        //     handle: string;
-        //     initX: number;
-        //     initY: number;
-        //   }) => {
-        //     selectedHandle = handleSpec;
-        //   };
-        //   handle.onmousedown = (e) => {
-        //     console.log("Handle Clicked for", id);
-        //     onHandleSelect({
-        //       nodeId: id,
-        //       handle: classname,
-        //       initX: (e.clientX / window.innerWidth) * 100,
-        //       initY: (e.clientY / window.innerHeight) * 100,
-        //     });
-        //     e.stopPropagation();
-        //   };
-        //   return handle;
-        // };
         contentWrapper.ontouchstart = function (e) {
-            console.log("!!!!!!");
-            //   selectedHandle = {
-            //     nodeId: id,
-            //     handle: "",
-            //     initX: (e.touches[0].screenX / window.innerWidth) * 100,
-            //     initY: (e.touches[0].screenY / window.innerHeight) * 100,
-            //   };
+            handlers.onMouseDown(e);
+            e.preventDefault();
         };
-        contentWrapper.ontouchmove = function (e) {
-            //   if (selectedHandle) {
-            //     let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-            //     let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-            //     if (
-            //       Math.abs(x - selectedHandle.initX) > 0.5 ||
-            //       Math.abs(y - selectedHandle.initY) > 0.5
-            //     ) {
-            //       let xdiff = x - selectedHandle.initX;
-            //       let ydiff = y - selectedHandle.initY;
-            //       let type = null;
-            //       if (xdiff >= 0) {
-            //         if (ydiff >= 0) {
-            //           type = "bottomright";
-            //         } else {
-            //           type = "topright";
-            //         }
-            //       } else {
-            //         if (ydiff <= 0) {
-            //           type = "bottomleft";
-            //         } else {
-            //           type = "topleft";
-            //         }
-            //       }
-            //       selectedHandle = {
-            //         nodeId: selectedHandle.nodeId,
-            //         handle: type,
-            //         initX: selectedHandle.initX,
-            //         initY: selectedHandle.initY,
-            //       };
-            //       onHandleDrag(x, y);
-            //       selectedHandle = {
-            //         nodeId: selectedHandle.nodeId,
-            //         handle: type,
-            //         initX: x,
-            //         initY: y,
-            //       };
-            //     }
-            //   }
-        };
-        // contentWrapper.appendChild(makeHandle("topleft"));
-        // contentWrapper.appendChild(makeHandle("topright"));
-        // contentWrapper.appendChild(makeHandle("bottomleft"));
-        // contentWrapper.appendChild(makeHandle("bottomright"));
+        contentWrapper.onmousedown = handlers.onMouseDown;
+        contentWrapper.onmousemove = handlers.onMouseMove;
+        contentWrapper.ontouchmove = handlers.onMouseMove;
         contentWrapper.appendChild(tempdiv);
+        contentWrapper.appendChild(node);
         result = contentWrapper;
         // result = tempdiv;
     }
@@ -596,7 +513,6 @@ var mouseState = null;
 var render = function (root, state, updateState) {
     root.innerHTML = "";
     var handleClick = function (e) {
-        console.log(e);
         var id = e.target.id;
         id = id.substring(id.indexOf("."));
         var newState = {
@@ -604,13 +520,11 @@ var render = function (root, state, updateState) {
             selected: [id],
         };
         updateState(newState);
-        // handleClick(e);
     };
     document.onkeydown = function (evt) {
         var newFocus = [];
         var n = null;
         var newState = state.tree;
-        console.log(evt);
         if (evt.shiftKey) {
             if (evt.key === "ArrowUp") {
                 newState = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(newState, state.selected[0], "vertical", -5, true);
@@ -662,18 +576,11 @@ var render = function (root, state, updateState) {
             selected: n ? [n] : state.selected,
         });
     };
-    root.onmousedown = function (e) {
-        var id = e.target.id;
-        id = id.substring(id.indexOf("."));
-        console.log(id, e);
+    var handleCursorDown = function (x, y, id) {
         var width = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteSizeOfNode)(state.tree, id, "horizontal");
         var height = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteSizeOfNode)(state.tree, id, "vertical");
         var xoffset = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteOffsetOfNode)(state.tree, id, "horizontal");
         var yoffset = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteOffsetOfNode)(state.tree, id, "vertical");
-        var rootNode = document.getElementById("root");
-        var bounds = rootNode.getBoundingClientRect();
-        var x = (100 * e.clientX) / bounds.right;
-        var y = (100 * e.clientY) / bounds.bottom;
         var relativeX = (x - xoffset) / width;
         var relativeY = (y - yoffset) / height;
         var horizontalHandle = null;
@@ -690,48 +597,59 @@ var render = function (root, state, updateState) {
         else if (relativeY < 0.5) {
             verticalHandle = "top";
         }
-        // console.log(xoffset, yoffset, width, height);
         mouseState = {
-            initX: (e.clientX / window.innerWidth) * 100,
-            initY: (e.clientY / window.innerHeight) * 100,
+            initX: x,
+            initY: y,
             horizontalHandle: horizontalHandle,
             verticalHandle: verticalHandle,
             selected: id,
         };
     };
-    document.onmousemove = function (e) {
+    var handleCursorMove = function (e) {
+        var id = e.target.id;
+        id = id.substring(id.indexOf("."));
+        var rootNode = document.getElementById("root");
+        var bounds = rootNode.getBoundingClientRect();
+        var x = null;
+        var y = null;
+        if ("touches" in e) {
+            x = (100 * e.touches[0].clientX) / bounds.right;
+            y = (100 * e.touches[0].clientY) / bounds.bottom;
+        }
+        else {
+            x = (100 * e.clientX) / bounds.right;
+            y = (100 * e.clientY) / bounds.bottom;
+        }
         if (mouseState) {
-            var x = (e.clientX / window.innerWidth) * 100;
-            var y = (e.clientY / window.innerHeight) * 100;
             var dx = x - mouseState.initX;
             var dy = y - mouseState.initY;
-            var id = mouseState.selected;
+            var id_1 = mouseState.selected;
             var newTree = state.tree;
             if ((dx > 0 && mouseState.horizontalHandle === "right") ||
                 (dx < 0 && mouseState.horizontalHandle === "left")) {
-                newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(state.tree, id, "horizontal", dx, true);
+                newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(state.tree, id_1, "horizontal", dx, true);
             }
             else if (dx < 0 && mouseState.horizontalHandle === "right") {
-                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusRight)(state.tree, id);
+                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusRight)(state.tree, id_1);
                 if (neighbor)
                     newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(state.tree, neighbor, "horizontal", dx, true);
             }
             else if (dx > 0 && mouseState.horizontalHandle === "left") {
-                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusLeft)(state.tree, id);
+                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusLeft)(state.tree, id_1);
                 if (neighbor)
                     newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(state.tree, neighbor, "horizontal", dx, true);
             }
             if ((dy < 0 && mouseState.verticalHandle === "top") ||
                 (dy > 0 && mouseState.verticalHandle === "bottom")) {
-                newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(newTree, id, "vertical", dy, true);
+                newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(newTree, id_1, "vertical", dy, true);
             }
             else if (dy > 0 && mouseState.verticalHandle === "top") {
-                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusUp)(state.tree, id);
+                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusUp)(state.tree, id_1);
                 if (neighbor)
                     newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(newTree, neighbor, "vertical", dy, true);
             }
             else if (dy < 0 && mouseState.verticalHandle === "bottom") {
-                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusDown)(state.tree, id);
+                var neighbor = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getFocusDown)(state.tree, id_1);
                 if (neighbor)
                     newTree = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.nudge)(newTree, neighbor, "vertical", dy, true);
             }
@@ -739,19 +657,43 @@ var render = function (root, state, updateState) {
                 tree: newTree,
                 selected: state.selected,
             });
-            mouseState = {
-                initX: x,
-                initY: y,
-                horizontalHandle: mouseState.horizontalHandle,
-                verticalHandle: mouseState.verticalHandle,
-                selected: mouseState.selected,
-            };
+            // todo: remove this hack for handling touch events
+            // when the DOM is redrawn and the element is (unneccesarily) destroyed, it stops receiving updates to `state`
+            if (!("touches" in e)) {
+                mouseState = {
+                    initX: x,
+                    initY: y,
+                    horizontalHandle: mouseState.horizontalHandle,
+                    verticalHandle: mouseState.verticalHandle,
+                    selected: mouseState.selected,
+                };
+            }
         }
     };
-    document.onmouseup = function (e) {
+    root.onmouseup = function (e) {
         mouseState = null;
     };
-    root.appendChild(bNodeToHTML(state.tree, "root", state.selected, handleClick));
+    root.appendChild(bNodeToHTML(state.tree, "root", state.selected, {
+        onClick: handleClick,
+        onMouseDown: function (e) {
+            var id = e.target.id;
+            id = id.substring(id.indexOf("."));
+            var rootNode = document.getElementById("root");
+            var bounds = rootNode.getBoundingClientRect();
+            var x = null;
+            var y = null;
+            if ("touches" in e) {
+                x = (100 * e.touches[0].clientX) / bounds.right;
+                y = (100 * e.touches[0].clientY) / bounds.bottom;
+            }
+            else {
+                x = (100 * e.clientX) / bounds.right;
+                y = (100 * e.clientY) / bounds.bottom;
+            }
+            handleCursorDown(x, y, id);
+        },
+        onMouseMove: handleCursorMove,
+    }));
 };
 
 
@@ -856,125 +798,7 @@ __webpack_require__.r(__webpack_exports__);
 document.addEventListener("touchmove", function (e) {
     e.preventDefault();
 }, { passive: false });
-// document.onmousemove = (e) => {
-//   if (selectedHandle) {
-//     let x = (e.clientX / window.innerWidth) * 100;
-//     let y = (e.clientY / window.innerHeight) * 100;
-//     onHandleDrag(x, y);
-//     selectedHandle = {
-//       nodeId: selectedHandle.nodeId,
-//       handle: selectedHandle.handle,
-//       initX: (e.clientX / window.innerWidth) * 100,
-//       initY: (e.clientY / window.innerHeight) * 100,
-//     };
-//   }
-// };
-// const handleMouseUp = (x: number, y: number) => {
-//   console.log(">>", x, y);
-//   if (selectedHandle) {
-//     console.log(selectedHandle);
-//     let diffX = x;
-//     let diffY = y;
-//     console.log(diffX, diffY);
-//     // return
-//     // horizontal move
-//     if (selectedHandle.handle === "topleft") {
-//       if (diffX > 0) {
-//         let leftId = getFocusLeft(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-//       } else {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-//       }
-//       //vertical move
-//       if (diffY < 0) {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-//       } else {
-//         let upperId = getFocusUp(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, upperId, "vertical", diffY, true);
-//       }
-//       // render(document.body, STATE, []);
-//     } else if (selectedHandle.handle === "topright") {
-//       // top right handle
-//       if (diffX < 0) {
-//         let leftId = getFocusRight(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-//       } else {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-//       }
-//       //vertical move
-//       if (diffY < 0) {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-//       } else {
-//         let upperId = getFocusUp(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, upperId, "vertical", diffY, true);
-//       }
-//     } else if (selectedHandle.handle === "bottomleft") {
-//       if (diffX > 0) {
-//         let leftId = getFocusLeft(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-//       } else {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-//       }
-//       if (diffY > 0) {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-//       } else {
-//         let upperId = getFocusDown(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, upperId, "vertical", diffY, true);
-//       }
-//     } else if (selectedHandle.handle === "bottomright") {
-//       if (diffX < 0) {
-//         let leftId = getFocusRight(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, leftId, "horizontal", diffX, true);
-//       } else {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "horizontal", diffX, true);
-//       }
-//       if (diffY > 0) {
-//         STATE = nudge(STATE, selectedHandle.nodeId, "vertical", diffY, true);
-//       } else {
-//         let upperId = getFocusDown(
-//           STATE,
-//           selectedHandle.nodeId.replace("root", "")
-//         );
-//         STATE = nudge(STATE, upperId, "vertical", diffY, true);
-//       }
-//     } else {
-//       throw Error("Trying to move unknown type of handle");
-//     }
-//   }
-//   // selectedHandle = null;
-// };
-// document.onmouseup = (e) => {
-//   selectedHandle = null;
-// };
-// document.ontouchend = (e) => {
-//   console.log("touch end");
-//   selectedHandle = null;
-// };
 // INIT
-// let img = document.createElement("img");
-// img.src =
-//   "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fboricua.com%2Fwp-content%2Fuploads%2F2021%2F09%2Fnew-york-city-billboards.jpg&f=1&nofb=1";
 var initTree = {
     fst: {
         fst: document.createTextNode("hel"),
@@ -983,22 +807,7 @@ var initTree = {
         direction: "vertical",
     },
     snd: {
-        fst: {
-            fst: document.createTextNode("wor"),
-            snd: {
-                fst: {
-                    fst: document.createTextNode("l"),
-                    snd: document.createTextNode("l"),
-                    pos: 50,
-                    direction: "horizontal",
-                },
-                snd: document.createTextNode("d"),
-                pos: 50,
-                direction: "horizontal",
-            },
-            pos: 25,
-            direction: "vertical",
-        },
+        fst: document.createTextNode("wor"),
         snd: {
             fst: document.createTextNode("!"),
             snd: document.createTextNode("??"),

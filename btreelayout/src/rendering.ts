@@ -19,14 +19,14 @@ const splitToHTML = (
   split: Split,
   id?: string,
   focusedIds?: string[],
-  onClick?: (evt: MouseEvent) => void
+  handlers?: EventHandlers
 ): HTMLElement => {
   const container = document.createElement("div");
   container.id = id;
   container.classList.add("container", split.direction);
 
   const fstChild = document.createElement("div");
-  fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds));
+  fstChild.appendChild(bNodeToHTML(split.fst, id + "0", focusedIds, handlers));
   fstChild.classList.add("fst");
 
   fstChild.style[
@@ -34,44 +34,36 @@ const splitToHTML = (
   ] = `calc(${split.pos}% - ${2 * PADDING_SIZE}px)`;
 
   const sndChild = document.createElement("div");
-  sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds));
+  sndChild.appendChild(bNodeToHTML(split.snd, id + "1", focusedIds, handlers));
   sndChild.classList.add("snd");
 
   container.append(fstChild, sndChild);
 
-  container.onclick = onClick;
-  //   container.onclick = (evt) => {
-  //     let t = evt.target as Element;
-  //     if (true) {
-  //       let newFocus = [t.id];
-  //       let selectedNode = getBNodeByKey(STATE, t.id.replace("root", ""));
-  //       console.log("selected:", t.id, selectedNode);
-  //       render(document.body, STATE, newFocus);
-  //     }
-  //   };
+  container.onclick = handlers.onClick;
 
-  //   container.ondrag = (evt) => {
-  //     console.log("!!!", evt);
-  //   };
-
-  //     newFocus.push(n !== null ? n : focusedIds[0]);
-  //     render(document.body, STATE, newFocus);
-  //   };
   return container;
 };
+
+interface EventHandlers {
+  onClick?: (evt: MouseEvent) => void;
+  //   onMouseDown?: (x: number, y: number) => void;
+  onMouseDown?: (evt: MouseEvent | TouchEvent) => void;
+  //   onMouseMove?: (x: number, y: number) => void;
+  onMouseMove?: (evt: MouseEvent | TouchEvent) => void;
+}
 
 const bNodeToHTML = (
   node: BNode,
   id?: string,
   focusedIds?: string[],
-  onClick?: (evt: MouseEvent) => void
+  handlers?: EventHandlers
 ): HTMLElement => {
   focusedIds = focusedIds ? focusedIds : [];
   id = id ? id : "root";
 
   let result = null;
   if (isSplit(node)) {
-    result = splitToHTML(node, id, focusedIds, onClick);
+    result = splitToHTML(node, id, focusedIds, handlers);
   } else if (isContent(node)) {
     let contentWrapper = document.createElement("div");
     contentWrapper.classList.add("content");
@@ -80,88 +72,17 @@ const bNodeToHTML = (
     let tempdiv = document.createElement("div");
     tempdiv.appendChild(document.createTextNode(id));
 
-    // const makeHandle = (classname: string) => {
-    //   const handle = document.createElement("div");
-    //   handle.classList.add(classname, "handle");
-
-    //   const onHandleSelect = (handleSpec: {
-    //     nodeId: string;
-    //     handle: string;
-    //     initX: number;
-    //     initY: number;
-    //   }) => {
-    //     selectedHandle = handleSpec;
-    //   };
-    //   handle.onmousedown = (e) => {
-    //     console.log("Handle Clicked for", id);
-    //     onHandleSelect({
-    //       nodeId: id,
-    //       handle: classname,
-    //       initX: (e.clientX / window.innerWidth) * 100,
-    //       initY: (e.clientY / window.innerHeight) * 100,
-    //     });
-    //     e.stopPropagation();
-    //   };
-    //   return handle;
-    // };
-
     contentWrapper.ontouchstart = (e) => {
-      console.log("!!!!!!");
-      //   selectedHandle = {
-      //     nodeId: id,
-      //     handle: "",
-      //     initX: (e.touches[0].screenX / window.innerWidth) * 100,
-      //     initY: (e.touches[0].screenY / window.innerHeight) * 100,
-      //   };
+      handlers.onMouseDown(e);
+      e.preventDefault();
     };
 
-    contentWrapper.ontouchmove = (e) => {
-      //   if (selectedHandle) {
-      //     let x = (e.changedTouches[0].screenX / window.innerWidth) * 100;
-      //     let y = (e.changedTouches[0].screenY / window.innerHeight) * 100;
-      //     if (
-      //       Math.abs(x - selectedHandle.initX) > 0.5 ||
-      //       Math.abs(y - selectedHandle.initY) > 0.5
-      //     ) {
-      //       let xdiff = x - selectedHandle.initX;
-      //       let ydiff = y - selectedHandle.initY;
-      //       let type = null;
-      //       if (xdiff >= 0) {
-      //         if (ydiff >= 0) {
-      //           type = "bottomright";
-      //         } else {
-      //           type = "topright";
-      //         }
-      //       } else {
-      //         if (ydiff <= 0) {
-      //           type = "bottomleft";
-      //         } else {
-      //           type = "topleft";
-      //         }
-      //       }
-      //       selectedHandle = {
-      //         nodeId: selectedHandle.nodeId,
-      //         handle: type,
-      //         initX: selectedHandle.initX,
-      //         initY: selectedHandle.initY,
-      //       };
-      //       onHandleDrag(x, y);
-      //       selectedHandle = {
-      //         nodeId: selectedHandle.nodeId,
-      //         handle: type,
-      //         initX: x,
-      //         initY: y,
-      //       };
-      //     }
-      //   }
-    };
-
-    // contentWrapper.appendChild(makeHandle("topleft"));
-    // contentWrapper.appendChild(makeHandle("topright"));
-    // contentWrapper.appendChild(makeHandle("bottomleft"));
-    // contentWrapper.appendChild(makeHandle("bottomright"));
+    contentWrapper.onmousedown = handlers.onMouseDown;
+    contentWrapper.onmousemove = handlers.onMouseMove;
+    contentWrapper.ontouchmove = handlers.onMouseMove;
 
     contentWrapper.appendChild(tempdiv);
+    contentWrapper.appendChild(node);
 
     result = contentWrapper;
 
@@ -191,7 +112,6 @@ export const render = (
   root.innerHTML = "";
 
   let handleClick = (e: MouseEvent) => {
-    console.log(e);
     let id = (e.target as Element).id;
     id = id.substring(id.indexOf("."));
 
@@ -200,14 +120,12 @@ export const render = (
       selected: [id],
     };
     updateState(newState);
-    // handleClick(e);
   };
 
   document.onkeydown = (evt) => {
     let newFocus = [];
     let n = null;
     let newState = state.tree;
-    console.log(evt);
     if (evt.shiftKey) {
       if (evt.key === "ArrowUp") {
         newState = nudge(newState, state.selected[0], "vertical", -5, true);
@@ -268,21 +186,11 @@ export const render = (
     });
   };
 
-  root.onmousedown = (e) => {
-    let id = (e.target as Element).id;
-    id = id.substring(id.indexOf("."));
-    console.log(id, e);
-
+  const handleCursorDown = (x: number, y: number, id: string) => {
     let width = getAbsoluteSizeOfNode(state.tree, id, "horizontal");
     let height = getAbsoluteSizeOfNode(state.tree, id, "vertical");
     let xoffset = getAbsoluteOffsetOfNode(state.tree, id, "horizontal");
     let yoffset = getAbsoluteOffsetOfNode(state.tree, id, "vertical");
-
-    let rootNode = document.getElementById("root");
-
-    var bounds = rootNode.getBoundingClientRect();
-    var x = (100 * e.clientX) / bounds.right;
-    var y = (100 * e.clientY) / bounds.bottom;
 
     let relativeX = (x - xoffset) / width;
     let relativeY = (y - yoffset) / height;
@@ -300,21 +208,31 @@ export const render = (
       verticalHandle = "top";
     }
 
-    // console.log(xoffset, yoffset, width, height);
     mouseState = {
-      initX: (e.clientX / window.innerWidth) * 100,
-      initY: (e.clientY / window.innerHeight) * 100,
+      initX: x,
+      initY: y,
       horizontalHandle: horizontalHandle,
       verticalHandle: verticalHandle,
       selected: id,
     };
   };
 
-  document.onmousemove = (e) => {
-    if (mouseState) {
-      let x = (e.clientX / window.innerWidth) * 100;
-      let y = (e.clientY / window.innerHeight) * 100;
+  const handleCursorMove = (e: TouchEvent | MouseEvent) => {
+    let id = (e.target as Element).id;
+    id = id.substring(id.indexOf("."));
 
+    let rootNode = document.getElementById("root");
+    var bounds = rootNode.getBoundingClientRect();
+    var x = null;
+    let y = null;
+    if ("touches" in e) {
+      x = (100 * e.touches[0].clientX) / bounds.right;
+      y = (100 * e.touches[0].clientY) / bounds.bottom;
+    } else {
+      x = (100 * e.clientX) / bounds.right;
+      y = (100 * e.clientY) / bounds.bottom;
+    }
+    if (mouseState) {
       let dx = x - mouseState.initX;
       let dy = y - mouseState.initY;
 
@@ -354,21 +272,46 @@ export const render = (
         selected: state.selected,
       });
 
-      mouseState = {
-        initX: x,
-        initY: y,
-        horizontalHandle: mouseState.horizontalHandle,
-        verticalHandle: mouseState.verticalHandle,
-        selected: mouseState.selected,
-      };
+      // todo: remove this hack for handling touch events
+      // when the DOM is redrawn and the element is (unneccesarily) destroyed, it stops receiving updates to `state`
+      if (!("touches" in e)) {
+        mouseState = {
+          initX: x,
+          initY: y,
+          horizontalHandle: mouseState.horizontalHandle,
+          verticalHandle: mouseState.verticalHandle,
+          selected: mouseState.selected,
+        };
+      }
     }
   };
 
-  document.onmouseup = (e) => {
+  root.onmouseup = (e) => {
     mouseState = null;
   };
 
   root.appendChild(
-    bNodeToHTML(state.tree, "root", state.selected, handleClick)
+    bNodeToHTML(state.tree, "root", state.selected, {
+      onClick: handleClick,
+      onMouseDown: (e) => {
+        let id = (e.target as Element).id;
+        id = id.substring(id.indexOf("."));
+
+        let rootNode = document.getElementById("root");
+        var bounds = rootNode.getBoundingClientRect();
+        var x = null;
+        let y = null;
+        if ("touches" in e) {
+          x = (100 * e.touches[0].clientX) / bounds.right;
+          y = (100 * e.touches[0].clientY) / bounds.bottom;
+        } else {
+          x = (100 * e.clientX) / bounds.right;
+          y = (100 * e.clientY) / bounds.bottom;
+        }
+
+        handleCursorDown(x, y, id);
+      },
+      onMouseMove: handleCursorMove,
+    })
   );
 };
