@@ -11,7 +11,9 @@ import {
   deleteNode,
   getAbsoluteSizeOfNode,
   getAbsoluteOffsetOfNode,
+  Diff,
 } from "./btree_utils";
+import { getState } from "./btreelayout";
 
 const PADDING_SIZE = 0;
 
@@ -74,7 +76,7 @@ const bNodeToHTML = (
 
     contentWrapper.ontouchstart = (e) => {
       handlers.onMouseDown(e);
-      e.preventDefault();
+      //   e.preventDefault();
     };
 
     contentWrapper.onmousedown = handlers.onMouseDown;
@@ -109,9 +111,12 @@ export const render = (
   state: BTreeUserState,
   updateState: (s: BTreeUserState) => void
 ): void => {
+  console.log("rendering....");
   root.innerHTML = "";
 
   let handleClick = (e: MouseEvent) => {
+    let state = getState();
+    if (state === null) return;
     let id = (e.target as Element).id;
     id = id.substring(id.indexOf("."));
 
@@ -123,7 +128,8 @@ export const render = (
   };
 
   document.onkeydown = (evt) => {
-    let newFocus = [];
+    let state = getState();
+    if (state === null) return;
     let n = null;
     let newState = state.tree;
     if (evt.shiftKey) {
@@ -187,6 +193,8 @@ export const render = (
   };
 
   const handleCursorDown = (x: number, y: number, id: string) => {
+    let state = getState();
+    if (state === null) return;
     let width = getAbsoluteSizeOfNode(state.tree, id, "horizontal");
     let height = getAbsoluteSizeOfNode(state.tree, id, "vertical");
     let xoffset = getAbsoluteOffsetOfNode(state.tree, id, "horizontal");
@@ -218,6 +226,9 @@ export const render = (
   };
 
   const handleCursorMove = (e: TouchEvent | MouseEvent) => {
+    let state = getState();
+    // console.log('?')
+    // if (state === null) return;
     let id = (e.target as Element).id;
     id = id.substring(id.indexOf("."));
 
@@ -272,17 +283,13 @@ export const render = (
         selected: state.selected,
       });
 
-      // todo: remove this hack for handling touch events
-      // when the DOM is redrawn and the element is (unneccesarily) destroyed, it stops receiving updates to `state`
-      if (!("touches" in e)) {
-        mouseState = {
-          initX: x,
-          initY: y,
-          horizontalHandle: mouseState.horizontalHandle,
-          verticalHandle: mouseState.verticalHandle,
-          selected: mouseState.selected,
-        };
-      }
+      mouseState = {
+        initX: x,
+        initY: y,
+        horizontalHandle: mouseState.horizontalHandle,
+        verticalHandle: mouseState.verticalHandle,
+        selected: mouseState.selected,
+      };
     }
   };
 
@@ -314,4 +321,21 @@ export const render = (
       onMouseMove: handleCursorMove,
     })
   );
+};
+
+export const renderDiffs = (diffs: Diff[]): void => {
+  console.log("rendering diffs...");
+  //   console.log(getState());
+  diffs.forEach((diff) => {
+    console.log(diff);
+    if (diff.editType === "changePos") {
+      console.log(diff.direction);
+      let currDomElem = document.getElementById(diff.nodeId).children[0];
+      if (diff.direction === "vertical") {
+        (currDomElem as HTMLElement).style.height = `${diff.data}%`;
+      } else {
+        (currDomElem as HTMLElement).style.width = `${diff.data}%`;
+      }
+    }
+  });
 };

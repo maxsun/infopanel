@@ -1,7 +1,8 @@
 // TYPES
 import { BNode, BTreeUserState } from "./types";
 
-import { render } from "./rendering";
+import { render, renderDiffs } from "./rendering";
+import { treeEq, treeDiff } from "./btree_utils";
 
 // RENDERING
 
@@ -26,7 +27,7 @@ let initTree: BNode = {
     fst: document.createTextNode("wor"),
     snd: {
       fst: document.createTextNode("!"),
-      snd: document.createTextNode("??"),
+      snd: document.createElement("textarea"),
       pos: 50,
       direction: "horizontal",
     },
@@ -37,8 +38,30 @@ let initTree: BNode = {
   direction: "horizontal",
 };
 
+var state: BTreeUserState = null;
+
+export const getState = (): BTreeUserState => {
+  return state;
+};
+
 const updateState = (newState: BTreeUserState) => {
-  render(document.body, newState, updateState);
+  if (
+    state &&
+    JSON.stringify(state.selected) === JSON.stringify(newState.selected) &&
+    treeEq(state.tree, newState.tree)
+  ) {
+    console.log("No change -- skipping render!");
+  } else {
+    console.log(state);
+    // render(document.body, newState, updateState);
+    if (state) {
+      console.log(state.tree);
+      let diffs = treeDiff(state.tree, newState.tree, "root");
+      console.log(diffs);
+      renderDiffs(diffs);
+    }
+    state = newState;
+  }
 };
 
 render(
@@ -49,3 +72,7 @@ render(
   },
   updateState
 );
+updateState({
+  selected: [],
+  tree: initTree,
+});

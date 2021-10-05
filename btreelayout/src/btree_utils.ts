@@ -518,3 +518,56 @@ export const getFocusLeft = (
   };
   return getRightMost(nextFocus, history);
 };
+
+export const treeEq = (nodeA: BNode, nodeB: BNode): boolean => {
+  if (isContent(nodeA) && isContent(nodeB)) {
+    return nodeA === nodeB;
+  }
+  if (isSplit(nodeA) && isSplit(nodeB)) {
+    return (
+      nodeA.pos === nodeB.pos &&
+      treeEq(nodeA.fst, nodeB.fst) &&
+      treeEq(nodeA.snd, nodeB.snd)
+    );
+  }
+  return false;
+};
+
+export interface Diff {
+  editType: "replace" | "-" | "changePos" | "replaceFst" | "replaceSnd";
+  data: BNode | number;
+  nodeId: string;
+  direction: string;
+}
+export const treeDiff = (
+  nodeA: BNode,
+  nodeB: BNode,
+  rootId: string
+): Diff[] => {
+  if (isContent(nodeA) && isContent(nodeB)) {
+    return [];
+  }
+  if (isSplit(nodeA) && isSplit(nodeB)) {
+    let diffs = [];
+    if (nodeA.pos !== nodeB.pos) {
+      diffs.push({
+        editType: "changePos",
+        data: nodeB.pos,
+        nodeId: rootId,
+        direction: nodeB.direction,
+      } as Diff);
+    }
+    diffs = diffs.concat(treeDiff(nodeA.fst, nodeB.fst, rootId + "0"));
+    diffs = diffs.concat(treeDiff(nodeA.snd, nodeB.snd, rootId + "1"));
+    return diffs;
+  }
+  console.warn("I HAVENT THOUGHT THIS CODE THROUGH!!!");
+  return [
+    {
+      editType: "replace",
+      data: nodeB,
+      direction: "?",
+      nodeId: rootId,
+    },
+  ];
+};

@@ -22,7 +22,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "getFocusUp": () => (/* binding */ getFocusUp),
 /* harmony export */   "getFocusDown": () => (/* binding */ getFocusDown),
 /* harmony export */   "getFocusRight": () => (/* binding */ getFocusRight),
-/* harmony export */   "getFocusLeft": () => (/* binding */ getFocusLeft)
+/* harmony export */   "getFocusLeft": () => (/* binding */ getFocusLeft),
+/* harmony export */   "treeEq": () => (/* binding */ treeEq),
+/* harmony export */   "treeDiff": () => (/* binding */ treeDiff)
 /* harmony export */ });
 /* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./types */ "./src/types.ts");
 // UTILS
@@ -445,6 +447,119 @@ var getFocusLeft = function (nodeState, currFocus) {
     };
     return getRightMost(nextFocus, history);
 };
+var treeEq = function (nodeA, nodeB) {
+    if ((0,_types__WEBPACK_IMPORTED_MODULE_0__.isContent)(nodeA) && (0,_types__WEBPACK_IMPORTED_MODULE_0__.isContent)(nodeB)) {
+        return nodeA === nodeB;
+    }
+    if ((0,_types__WEBPACK_IMPORTED_MODULE_0__.isSplit)(nodeA) && (0,_types__WEBPACK_IMPORTED_MODULE_0__.isSplit)(nodeB)) {
+        return (nodeA.pos === nodeB.pos &&
+            treeEq(nodeA.fst, nodeB.fst) &&
+            treeEq(nodeA.snd, nodeB.snd));
+    }
+    return false;
+};
+var treeDiff = function (nodeA, nodeB, rootId) {
+    if ((0,_types__WEBPACK_IMPORTED_MODULE_0__.isContent)(nodeA) && (0,_types__WEBPACK_IMPORTED_MODULE_0__.isContent)(nodeB)) {
+        return [];
+    }
+    if ((0,_types__WEBPACK_IMPORTED_MODULE_0__.isSplit)(nodeA) && (0,_types__WEBPACK_IMPORTED_MODULE_0__.isSplit)(nodeB)) {
+        var diffs = [];
+        if (nodeA.pos !== nodeB.pos) {
+            diffs.push({
+                editType: "changePos",
+                data: nodeB.pos,
+                nodeId: rootId,
+                direction: nodeB.direction,
+            });
+        }
+        diffs = diffs.concat(treeDiff(nodeA.fst, nodeB.fst, rootId + "0"));
+        diffs = diffs.concat(treeDiff(nodeA.snd, nodeB.snd, rootId + "1"));
+        return diffs;
+    }
+    console.warn("I HAVENT THOUGHT THIS CODE THROUGH!!!");
+    return [
+        {
+            editType: "replace",
+            data: nodeB,
+            direction: "?",
+            nodeId: rootId,
+        },
+    ];
+};
+
+
+/***/ }),
+
+/***/ "./src/btreelayout.ts":
+/*!****************************!*\
+  !*** ./src/btreelayout.ts ***!
+  \****************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "getState": () => (/* binding */ getState)
+/* harmony export */ });
+/* harmony import */ var _rendering__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./rendering */ "./src/rendering.ts");
+/* harmony import */ var _btree_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./btree_utils */ "./src/btree_utils.ts");
+
+
+// RENDERING
+document.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+}, { passive: false });
+// INIT
+var initTree = {
+    fst: {
+        fst: document.createTextNode("hel"),
+        snd: document.createTextNode("llo"),
+        pos: 50,
+        direction: "vertical",
+    },
+    snd: {
+        fst: document.createTextNode("wor"),
+        snd: {
+            fst: document.createTextNode("!"),
+            snd: document.createElement("textarea"),
+            pos: 50,
+            direction: "horizontal",
+        },
+        pos: 50,
+        direction: "vertical",
+    },
+    pos: 25,
+    direction: "horizontal",
+};
+var state = null;
+var getState = function () {
+    return state;
+};
+var updateState = function (newState) {
+    if (state &&
+        JSON.stringify(state.selected) === JSON.stringify(newState.selected) &&
+        (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.treeEq)(state.tree, newState.tree)) {
+        console.log("No change -- skipping render!");
+    }
+    else {
+        console.log(state);
+        // render(document.body, newState, updateState);
+        if (state) {
+            console.log(state.tree);
+            var diffs = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.treeDiff)(state.tree, newState.tree, "root");
+            console.log(diffs);
+            (0,_rendering__WEBPACK_IMPORTED_MODULE_0__.renderDiffs)(diffs);
+        }
+        state = newState;
+    }
+};
+(0,_rendering__WEBPACK_IMPORTED_MODULE_0__.render)(document.body, {
+    selected: [],
+    tree: initTree,
+}, updateState);
+updateState({
+    selected: [],
+    tree: initTree,
+});
 
 
 /***/ }),
@@ -457,10 +572,13 @@ var getFocusLeft = function (nodeState, currFocus) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "render": () => (/* binding */ render)
+/* harmony export */   "render": () => (/* binding */ render),
+/* harmony export */   "renderDiffs": () => (/* binding */ renderDiffs)
 /* harmony export */ });
 /* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./types */ "./src/types.ts");
 /* harmony import */ var _btree_utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./btree_utils */ "./src/btree_utils.ts");
+/* harmony import */ var _btreelayout__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./btreelayout */ "./src/btreelayout.ts");
+
 
 
 var PADDING_SIZE = 0;
@@ -494,7 +612,7 @@ var bNodeToHTML = function (node, id, focusedIds, handlers) {
         tempdiv.appendChild(document.createTextNode(id));
         contentWrapper.ontouchstart = function (e) {
             handlers.onMouseDown(e);
-            e.preventDefault();
+            //   e.preventDefault();
         };
         contentWrapper.onmousedown = handlers.onMouseDown;
         contentWrapper.onmousemove = handlers.onMouseMove;
@@ -511,8 +629,12 @@ var bNodeToHTML = function (node, id, focusedIds, handlers) {
 };
 var mouseState = null;
 var render = function (root, state, updateState) {
+    console.log("rendering....");
     root.innerHTML = "";
     var handleClick = function (e) {
+        var state = (0,_btreelayout__WEBPACK_IMPORTED_MODULE_2__.getState)();
+        if (state === null)
+            return;
         var id = e.target.id;
         id = id.substring(id.indexOf("."));
         var newState = {
@@ -522,7 +644,9 @@ var render = function (root, state, updateState) {
         updateState(newState);
     };
     document.onkeydown = function (evt) {
-        var newFocus = [];
+        var state = (0,_btreelayout__WEBPACK_IMPORTED_MODULE_2__.getState)();
+        if (state === null)
+            return;
         var n = null;
         var newState = state.tree;
         if (evt.shiftKey) {
@@ -577,6 +701,9 @@ var render = function (root, state, updateState) {
         });
     };
     var handleCursorDown = function (x, y, id) {
+        var state = (0,_btreelayout__WEBPACK_IMPORTED_MODULE_2__.getState)();
+        if (state === null)
+            return;
         var width = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteSizeOfNode)(state.tree, id, "horizontal");
         var height = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteSizeOfNode)(state.tree, id, "vertical");
         var xoffset = (0,_btree_utils__WEBPACK_IMPORTED_MODULE_1__.getAbsoluteOffsetOfNode)(state.tree, id, "horizontal");
@@ -606,6 +733,9 @@ var render = function (root, state, updateState) {
         };
     };
     var handleCursorMove = function (e) {
+        var state = (0,_btreelayout__WEBPACK_IMPORTED_MODULE_2__.getState)();
+        // console.log('?')
+        // if (state === null) return;
         var id = e.target.id;
         id = id.substring(id.indexOf("."));
         var rootNode = document.getElementById("root");
@@ -657,17 +787,13 @@ var render = function (root, state, updateState) {
                 tree: newTree,
                 selected: state.selected,
             });
-            // todo: remove this hack for handling touch events
-            // when the DOM is redrawn and the element is (unneccesarily) destroyed, it stops receiving updates to `state`
-            if (!("touches" in e)) {
-                mouseState = {
-                    initX: x,
-                    initY: y,
-                    horizontalHandle: mouseState.horizontalHandle,
-                    verticalHandle: mouseState.verticalHandle,
-                    selected: mouseState.selected,
-                };
-            }
+            mouseState = {
+                initX: x,
+                initY: y,
+                horizontalHandle: mouseState.horizontalHandle,
+                verticalHandle: mouseState.verticalHandle,
+                selected: mouseState.selected,
+            };
         }
     };
     root.onmouseup = function (e) {
@@ -694,6 +820,23 @@ var render = function (root, state, updateState) {
         },
         onMouseMove: handleCursorMove,
     }));
+};
+var renderDiffs = function (diffs) {
+    console.log("rendering diffs...");
+    //   console.log(getState());
+    diffs.forEach(function (diff) {
+        console.log(diff);
+        if (diff.editType === "changePos") {
+            console.log(diff.direction);
+            var currDomElem = document.getElementById(diff.nodeId).children[0];
+            if (diff.direction === "vertical") {
+                currDomElem.style.height = diff.data + "%";
+            }
+            else {
+                currDomElem.style.width = diff.data + "%";
+            }
+        }
+    });
 };
 
 
@@ -785,51 +928,12 @@ var isBNode = function (n) {
 /******/ 	})();
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
-(() => {
-/*!****************************!*\
-  !*** ./src/btreelayout.ts ***!
-  \****************************/
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _rendering__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./rendering */ "./src/rendering.ts");
-
-// RENDERING
-document.addEventListener("touchmove", function (e) {
-    e.preventDefault();
-}, { passive: false });
-// INIT
-var initTree = {
-    fst: {
-        fst: document.createTextNode("hel"),
-        snd: document.createTextNode("llo"),
-        pos: 50,
-        direction: "vertical",
-    },
-    snd: {
-        fst: document.createTextNode("wor"),
-        snd: {
-            fst: document.createTextNode("!"),
-            snd: document.createTextNode("??"),
-            pos: 50,
-            direction: "horizontal",
-        },
-        pos: 50,
-        direction: "vertical",
-    },
-    pos: 25,
-    direction: "horizontal",
-};
-var updateState = function (newState) {
-    (0,_rendering__WEBPACK_IMPORTED_MODULE_0__.render)(document.body, newState, updateState);
-};
-(0,_rendering__WEBPACK_IMPORTED_MODULE_0__.render)(document.body, {
-    selected: [],
-    tree: initTree,
-}, updateState);
-
-})();
-
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__("./src/btreelayout.ts");
+/******/ 	
 /******/ })()
 ;
 //# sourceMappingURL=bundle.js.map
