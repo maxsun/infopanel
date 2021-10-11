@@ -1,0 +1,1 @@
+/Users/max/Desktop/infopanel/socketserver/target/debug/socketserver: /Users/max/Desktop/infopanel/socketserver/src/Ws.rs /Users/max/Desktop/infopanel/socketserver/src/handlers.rs /Users/max/Desktop/infopanel/socketserver/src/main.rs

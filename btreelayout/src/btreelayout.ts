@@ -16,28 +16,6 @@ document.addEventListener(
 
 // INIT
 
-let initTree: BNode = {
-  fst: {
-    fst: document.createTextNode("hel"),
-    snd: document.createTextNode("llo"),
-    pos: 50,
-    direction: "vertical",
-  },
-  snd: {
-    fst: document.createTextNode("wor"),
-    snd: {
-      fst: document.createTextNode("!"),
-      snd: document.createElement("textarea"),
-      pos: 50,
-      direction: "horizontal",
-    },
-    pos: 50,
-    direction: "vertical",
-  },
-  pos: 25,
-  direction: "horizontal",
-};
-
 var state: BTreeUserState = null;
 
 export const getState = (): BTreeUserState => {
@@ -64,15 +42,4 @@ const updateState = (newState: BTreeUserState) => {
   }
 };
 
-render(
-  document.body,
-  {
-    selected: [],
-    tree: initTree,
-  },
-  updateState
-);
-updateState({
-  selected: [],
-  tree: initTree,
-});
+export { render, updateState };

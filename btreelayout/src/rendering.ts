@@ -1,3 +1,6 @@
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+
 import { BNode, Split, isSplit, isContent, BTreeUserState } from "./types";
 import {
   nudge,
@@ -16,6 +19,8 @@ import {
 import { getState } from "./btreelayout";
 
 const PADDING_SIZE = 0;
+
+var shiftDown = false;
 
 const splitToHTML = (
   split: Split,
@@ -80,11 +85,16 @@ const bNodeToHTML = (
     };
 
     contentWrapper.onmousedown = handlers.onMouseDown;
-    contentWrapper.onmousemove = handlers.onMouseMove;
+    document.body.onmousemove = handlers.onMouseMove;
     contentWrapper.ontouchmove = handlers.onMouseMove;
 
     contentWrapper.appendChild(tempdiv);
-    contentWrapper.appendChild(node);
+    if (React.isValidElement(node)) {
+      ReactDOM.render(node, contentWrapper);
+      // contentWrapper.appendChild(node);
+    } else {
+      contentWrapper.appendChild(node);
+    }
 
     result = contentWrapper;
 
@@ -127,11 +137,20 @@ export const render = (
     updateState(newState);
   };
 
+  document.onkeyup = (evt) => {
+    if (evt.key === "Shift") {
+      shiftDown = false;
+    }
+  };
+
   document.onkeydown = (evt) => {
     let state = getState();
     if (state === null) return;
     let n = null;
     let newState = state.tree;
+    if (evt.key === "Shift") {
+      shiftDown = true;
+    }
     if (evt.shiftKey) {
       if (evt.key === "ArrowUp") {
         newState = nudge(newState, state.selected[0], "vertical", -5, true);
@@ -194,7 +213,7 @@ export const render = (
 
   const handleCursorDown = (x: number, y: number, id: string) => {
     let state = getState();
-    if (state === null) return;
+    if (state === null || !shiftDown) return;
     let width = getAbsoluteSizeOfNode(state.tree, id, "horizontal");
     let height = getAbsoluteSizeOfNode(state.tree, id, "vertical");
     let xoffset = getAbsoluteOffsetOfNode(state.tree, id, "horizontal");
@@ -216,6 +235,7 @@ export const render = (
       verticalHandle = "top";
     }
 
+    console.log("cursor down", x, y, id);
     mouseState = {
       initX: x,
       initY: y,
@@ -301,7 +321,9 @@ export const render = (
     bNodeToHTML(state.tree, "root", state.selected, {
       onClick: handleClick,
       onMouseDown: (e) => {
-        let id = (e.target as Element).id;
+        var closestElement = (e.target as Element).closest(".content");
+        let id = (closestElement as Element).id;
+        // console.log("clicked id:", id);
         id = id.substring(id.indexOf("."));
 
         let rootNode = document.getElementById("root");
@@ -324,12 +346,12 @@ export const render = (
 };
 
 export const renderDiffs = (diffs: Diff[]): void => {
-  console.log("rendering diffs...");
+  // console.log("rendering diffs...");
   //   console.log(getState());
   diffs.forEach((diff) => {
-    console.log(diff);
+    // console.log(diff);
     if (diff.editType === "changePos") {
-      console.log(diff.direction);
+      // console.log(diff.direction);
       let currDomElem = document.getElementById(diff.nodeId).children[0];
       if (diff.direction === "vertical") {
         (currDomElem as HTMLElement).style.height = `${diff.data}%`;

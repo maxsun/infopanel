@@ -1,3 +1,5 @@
+import * as React from "react";
+
 export interface Split {
   fst: BNode;
   snd: BNode;
@@ -23,9 +25,12 @@ export const isSplit = (n: any): n is Split => {
   );
 };
 
-export type Content = HTMLElement | Text;
+export type Content = HTMLElement | Text | React.ReactElement;
+// export type
 export const isContent = (n: any): n is Content => {
-  return n instanceof HTMLElement || n instanceof Text;
+  return (
+    n instanceof HTMLElement || n instanceof Text || React.isValidElement(n)
+  );
 };
 
 export type BNode = Split | Content;
