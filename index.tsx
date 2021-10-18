@@ -2,15 +2,11 @@ import * as React from "react";
 import * as bt from "./btreelayout/src/btreelayout";
 import { BNode } from "./btreelayout/src/types";
 
-import ForceGraph2D, { ForceGraphProps } from "react-force-graph-2d";
-import ForceGraph3D from "react-force-graph-3d";
-import SpriteText from "three-spritetext";
-
-import { Pane } from "./draganddrop/dnd";
 import {
   ListPane,
   QueryPane,
   OsoInspecorProvider,
+  FG,
 } from "./OsoInspector/OsoInspector";
 
 console.log("Running infopanel...");
@@ -26,121 +22,6 @@ const CounterExample = () => {
   );
 };
 
-const FG = () => {
-  const fgRef = React.useRef(null);
-
-  let [data, setData] = React.useState<ForceGraphProps["graphData"]>({
-    nodes: [],
-    links: [],
-  });
-
-  React.useEffect(() => {
-    fetch("http://localhost:9001/api/osotest")
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(">>>", data);
-        // const allOrgs = data.map((role: any) => {
-        //     role.org_id
-        // });
-        // const allUsers = data.map((role: any) => role.user_id);
-        // const allSurveys = data.map((role: any) => role.survey_id);
-        // const allEntities = allOrgs
-        //   .concat(allUsers)
-        //   .concat(allSurveys)
-        //   .filter((x: any) => x !== null)
-        //   .filter((v, i, a) => a.indexOf(v) === i)
-        //   .map((x: number | string) => {
-        //     return {
-        //       id: String(x),
-        //       type: "user",
-        //       name: "hello",
-        //     };
-        //   });
-
-        let allLinks: any[] = [];
-        let allNodes: any[] = [];
-
-        data.forEach((role: any) => {
-          if (role.survey_id) {
-            allLinks.push({
-              source: String(role.survey_id),
-              target: String(role.user_id),
-            });
-
-            allNodes.push({
-              id: String(role.survey_id),
-              type: "survey",
-            });
-          }
-          if (role.org_id) {
-            allLinks.push({
-              source: String(role.org_id),
-              target: String(role.user_id),
-            });
-            allNodes.push({
-              id: String(role.org_id),
-              type: "organization",
-            });
-          }
-          allNodes.push({
-            id: String(role.user_id),
-            type: "user",
-          });
-        });
-
-        setData({
-          nodes: allNodes.filter(
-            (v, i, a) => a.map((n) => n.id).indexOf(v.id) === i
-          ),
-          links: allLinks,
-        });
-      });
-  }, []);
-
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "90%",
-        border: "solid 1px red",
-      }}
-      onClick={(e) => {
-        console.log("!");
-        e.stopPropagation();
-      }}
-    >
-      <ForceGraph3D
-        graphData={data}
-        width={600}
-        height={600}
-        nodeAutoColorBy="group"
-        nodeThreeObject={(node: any) => {
-          const sprite = new SpriteText(node.id);
-          let cm: any = {
-            user: "blue",
-            survey: "orange",
-            organization: "purple",
-          };
-          sprite.color = cm[node.type as string];
-          sprite.textHeight = 8;
-          return sprite;
-        }}
-      />
-    </div>
-    // <ForceGraph2D
-    //   ref={fgRef}
-    //   graphData={{ nodes: data.nodes, links: data.links }}
-    //   //   cooldownTicks={100}
-    //   nodeColor={() => "red"}
-    //   nodeLabel={(node) => {
-    //     console.log(node);
-    //     return "test";
-    //   }}
-    //   //   onEngineStop={() => fgRef.current.zoomToFit(400)}
-    // />
-  );
-};
-
 const initTree = {
   fst: {
     fst: (
@@ -150,7 +31,11 @@ const initTree = {
         </OsoInspecorProvider>
       </DndProvider>
     ),
-    snd: <FG />,
+    snd: (
+      <OsoInspecorProvider>
+        <FG />
+      </OsoInspecorProvider>
+    ),
     pos: 50,
     direction: "horizontal",
   },
@@ -176,7 +61,7 @@ const BT = () => {
 
   React.useEffect(() => {
     if (ref.current) {
-      console.log("!");
+      // console.log("!");
       bt.render(
         ref.current,
         {

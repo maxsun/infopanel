@@ -235,7 +235,7 @@ export const render = (
       verticalHandle = "top";
     }
 
-    console.log("cursor down", x, y, id);
+    // console.log("cursor down", x, y, id);
     mouseState = {
       initX: x,
       initY: y,

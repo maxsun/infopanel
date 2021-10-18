@@ -3,7 +3,8 @@ import { CSSProperties, FC, memo } from "react";
 import { useDrag } from "react-dnd";
 
 export interface ItemProps {
-  value: string;
+  value: any;
+  label: string;
   type: "org" | "survey" | "user" | "action" | "roletype";
   isDropped: boolean;
   color?: string;
@@ -12,6 +13,7 @@ export interface ItemProps {
 
 export const Item: FC<ItemProps> = memo(function Item({
   value,
+  label,
   type,
   color,
   icon,
@@ -32,18 +34,18 @@ export const Item: FC<ItemProps> = memo(function Item({
   const [{ opacity }, drag] = useDrag(
     () => ({
       type,
-      item: { value, type },
+      item: { value, label, type },
       collect: (monitor) => ({
         opacity: monitor.isDragging() ? 0.4 : 1,
       }),
     }),
-    [value, type]
+    [value, label, type]
   );
 
   return (
     <div ref={drag} role="Box" style={{ ...style, opacity }}>
       {icon ? icon : null}
-      {isDropped ? <s>{value}</s> : value}
+      {label}
     </div>
   );
 });

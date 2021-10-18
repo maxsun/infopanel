@@ -20,6 +20,7 @@
     "react-force-graph-2d": "^1.23.8",
     "react-force-graph-3d": "^1.21.10",
     "react-icons": "^4.3.1",
+    "react-resize-detector": "^6.7.6",
     "three-spritetext": "^1.6.3"
   }
 }

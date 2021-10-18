@@ -3,20 +3,22 @@ import { useDrop } from "react-dnd";
 import { Item, ItemProps } from "./Item";
 
 export const SingleContainer = (props: {
-  value?: string;
+  value?: any;
   accepts: string[];
   color?: (val: string) => string;
-  onChange?: (newVal: string) => void;
+  onChange?: (newVal: any) => void;
 }) => {
   //   const [collectedProps, drop] = useDrop(() => ({
   //     accept: ["Box"],
   //   }));
 
-  const [value, setValue] = React.useState<string>(props.value);
+  const [value, setValue] = React.useState<any>(props.value);
+  const [label, setLabel] = React.useState<string>(props.value);
   const [type, setType] = React.useState<ItemProps["type"]>(null);
 
-  const handleDrop = React.useCallback(({ value, type }) => {
+  const handleDrop = React.useCallback(({ value, label, type }) => {
     setType(type);
+    setLabel(label);
     setValue(value);
     if (props.onChange) props.onChange(value);
   }, []);
@@ -49,6 +51,7 @@ export const SingleContainer = (props: {
     >
       {value ? (
         <Item
+          label={label}
           value={value}
           color={props.color ? props.color(type) : "gray"}
           type={type ? type : "user"}

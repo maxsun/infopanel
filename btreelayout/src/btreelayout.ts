@@ -30,12 +30,12 @@ const updateState = (newState: BTreeUserState) => {
   ) {
     console.log("No change -- skipping render!");
   } else {
-    console.log(state);
+    // console.log(state);
     // render(document.body, newState, updateState);
     if (state) {
-      console.log(state.tree);
+      // console.log(state.tree);
       let diffs = treeDiff(state.tree, newState.tree, "root");
-      console.log(diffs);
+      // console.log(diffs);
       renderDiffs(diffs);
     }
     state = newState;
