@@ -4,86 +4,9 @@
     content="width=device-width, initial-scale=1.0 user-scalable=no"
   />
   <head>
-    <style>
-      html,
-      body {
-        padding: 0;
-        margin: 0;
-        width: 100%;
-        height: 100%;
-      }
-
-      .container {
-        overflow: hidden;
-        width: calc(100%);
-        height: calc(100%);
-        display: flex;
-      }
-
-      .focused {
-        box-shadow: inset 0em 0em 0em 3px #e9d758 !important;
-      }
-
-      .horizontal {
-        flex-direction: row;
-      }
-
-      .vertical {
-        flex-direction: column;
-      }
-
-      .content {
-        background-color: #08090c;
-        color: #f1dede;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-        padding: 20px;
-        /* overflow: scroll; */
-        flex: 1;
-        box-shadow: inset 0em 0em 0em 2px #1c2c4a;
-        position: relative;
-        /* display: block; */
-      }
-
-      .fst {
-        overflow: hidden;
-        display: flex;
-      }
-      .snd {
-        overflow: hidden;
-        display: flex;
-        flex: 1;
-      }
-
-      .handle {
-        width: 25px;
-        /* border: solid 1px red; */
-        height: 25px;
-        position: absolute;
-        z-index: 100;
-        cursor: move;
-        opacity: 0;
-      }
-
-      .topleft {
-        left: 0;
-        top: 0;
-      }
-      .topright {
-        right: 0;
-        top: 0;
-      }
-      .bottomleft {
-        left: 0;
-        bottom: 0;
-      }
-      .bottomright {
-        right: 0;
-        bottom: 0;
-      }
-    </style>
+    <link rel="stylesheet" href="./btreelayout/src/btreelayout.css" />
   </head>
   <body>
-    <script src="./btreelayout/dist/bundle.js"></script>
+    <script src="./dist/bundle.js"></script>
   </body>
 </html>

@@ -1,7 +1,7 @@
 import * as React from "react";
 
-import { Item, ItemProps } from "../draganddrop/Item";
-import { SingleContainer } from "../draganddrop/Container";
+import { Item, ItemProps } from "../../utils/draganddrop/Item";
+import { SingleContainer } from "../../utils/draganddrop/Container";
 import {
   FaUser,
   FaFile,
